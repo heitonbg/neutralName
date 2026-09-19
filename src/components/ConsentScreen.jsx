@@ -1,9 +1,10 @@
 import React from 'react';
+import Icon from './Icon';
 
 const ConsentScreen = ({ onAccept }) => {
   return (
     <div className="consent-screen">
-      <div className="consent-icon">🎉</div>
+      <div className="consent-icon"><Icon name="map" size={58} /></div>
       <h1>MAX Events</h1>
       <p className="consent-subtitle">
         Делитесь идеями. Собирайте людей. Делайте город ярче!

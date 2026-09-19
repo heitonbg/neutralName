@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import Icon from './Icon';
 
 const FiltersModal = ({ onClose, onApply, initialFilters }) => {
   const [filters, setFilters] = useState(
     initialFilters || {
-      time: 'Сейчас',
-      distance: 'до 1 км',
+      time: null,
+      distance: null,
       category: [],
-      format: 'Офлайн',
-      price: 'Бесплатно',
+      format: null,
+      price: null,
       pushkinCard: false
     }
   );
@@ -23,11 +24,11 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
 
   const handleReset = () => {
     setFilters({
-      time: 'Сейчас',
-      distance: 'до 1 км',
+      time: null,
+      distance: null,
       category: [],
-      format: 'Офлайн',
-      price: 'Бесплатно',
+      format: null,
+      price: null,
       pushkinCard: false
     });
   };
@@ -43,18 +44,18 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
         <div className="filters-handle" />
         <div className="modal-header">
           <h2>Фильтры</h2>
-          <button onClick={onClose} className="close-btn">✕</button>
+          <button onClick={onClose} className="close-btn" aria-label="Закрыть"><Icon name="close" size={22} /></button>
         </div>
 
         <div className="filter-row-v2">
-          <span className="filter-icon">🕐</span>
+          <span className="filter-icon"><Icon name="clock" size={25} /></span>
           <span className="filter-label">Когда</span>
           <div className="filter-chips">
             {['Сейчас', 'Сегодня', 'Завтра'].map((t) => (
               <button
                 key={t}
                 className={`chip ${filters.time === t ? 'active' : ''}`}
-                onClick={() => setFilters({ ...filters, time: t })}
+                onClick={() => setFilters({ ...filters, time: filters.time === t ? null : t })}
               >
                 {t}
               </button>
@@ -63,14 +64,14 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
         </div>
 
         <div className="filter-row-v2">
-          <span className="filter-icon">📍</span>
+          <span className="filter-icon"><Icon name="pin" size={25} /></span>
           <span className="filter-label">Расстояние</span>
           <div className="filter-chips">
             {['до 1 км', 'до 3 км', 'до 5 км'].map((d) => (
               <button
                 key={d}
                 className={`chip ${filters.distance === d ? 'active' : ''}`}
-                onClick={() => setFilters({ ...filters, distance: d })}
+                onClick={() => setFilters({ ...filters, distance: filters.distance === d ? null : d })}
               >
                 {d}
               </button>
@@ -79,10 +80,10 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
         </div>
 
         <div className="filter-row-v2">
-          <span className="filter-icon">⊞</span>
+          <span className="filter-icon"><Icon name="grid" size={24} /></span>
           <span className="filter-label">Категория</span>
           <div className="filter-chips">
-            {['Спорт', 'Культура', 'Настолки', 'Кино'].map((c) => (
+            {['Спорт', 'Культура', 'Настольные игры', 'Кино', 'Прогулка', 'Музыка'].map((c) => (
               <button
                 key={c}
                 className={`chip ${filters.category.includes(c) ? 'active' : ''}`}
@@ -95,14 +96,14 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
         </div>
 
         <div className="filter-row-v2">
-          <span className="filter-icon">👥</span>
+          <span className="filter-icon"><Icon name="people" size={25} /></span>
           <span className="filter-label">Формат</span>
           <div className="filter-chips">
             {['Онлайн', 'Офлайн'].map((f) => (
               <button
                 key={f}
                 className={`chip ${filters.format === f ? 'active' : ''}`}
-                onClick={() => setFilters({ ...filters, format: f })}
+                onClick={() => setFilters({ ...filters, format: filters.format === f ? null : f })}
               >
                 {f}
               </button>
@@ -111,14 +112,14 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
         </div>
 
         <div className="filter-row-v2">
-          <span className="filter-icon">🏷️</span>
+          <span className="filter-icon"><Icon name="ticket" size={25} /></span>
           <span className="filter-label">Стоимость</span>
           <div className="filter-chips">
             {['Бесплатно', 'Платно'].map((p) => (
               <button
                 key={p}
                 className={`chip ${filters.price === p ? 'active' : ''}`}
-                onClick={() => setFilters({ ...filters, price: p })}
+                onClick={() => setFilters({ ...filters, price: filters.price === p ? null : p })}
               >
                 {p}
               </button>
@@ -128,7 +129,7 @@ const FiltersModal = ({ onClose, onApply, initialFilters }) => {
 
         <div className="pushkin-toggle-v2">
           <div className="pushkin-info">
-            <div className="pushkin-icon">🎭</div>
+            <div className="pushkin-icon">ПК</div>
             <div>
               <div className="pushkin-title">Пушкинская карта</div>
               <div className="pushkin-subtitle">

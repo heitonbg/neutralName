@@ -6,9 +6,6 @@ const BOT_USERNAME = 't184_hakaton_bot';
 
 let bot = null;
 
-/**
- * Инициализация и запуск бота MAX
- */
 export function startBot({ token, webAppUrl }) {
   if (!token || token.trim() === '') {
     console.warn('⚠️  BOT_TOKEN не задан — бот не запущен');
@@ -18,7 +15,6 @@ export function startBot({ token, webAppUrl }) {
   try {
     bot = new Bot(token);
 
-    // Устанавливаем меню команд
     bot.api
       .setMyCommands([
         { name: 'start', description: 'Открыть афишу событий' },
@@ -27,16 +23,21 @@ export function startBot({ token, webAppUrl }) {
       ])
       .catch((e) => console.warn('Не удалось установить меню:', e.message));
 
-    // Глобальный обработчик ошибок — бот не упадёт при сбое
     bot.catch((err) => {
       console.error('❌ Ошибка в обработке:', err.message);
     });
 
     // ============================================
-    // /start
+    // /start (с поддержкой deep-link)
     // ============================================
     bot.command('start', async (ctx) => {
       const userName = ctx.user?.name || 'друг';
+      const startParam =
+        ctx.startPayload ||
+        ctx.payload ||
+        ctx.update?.payload ||
+        ctx.message?.body?.payload ||
+        '';
 
       const text =
         `Привет, ${userName}! 👋\n\n` +
@@ -47,19 +48,18 @@ export function startBot({ token, webAppUrl }) {
         `• Напоминать о записи\n\n` +
         `Нажми кнопку ниже, чтобы начать 👇`;
 
+      let openAppButton;
+      try {
+        openAppButton = startParam
+          ? Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME, { start_param: startParam })
+          : Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME);
+      } catch (e) {
+        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME);
+      }
+
       const keyboard = Keyboard.inlineKeyboard([
-        [
-          Keyboard.button.openApp(
-            '🎉 Открыть афишу событий',
-            BOT_USERNAME
-          )
-        ],
-        [
-          Keyboard.button.openApp(
-            '👤 Мои события',
-            BOT_USERNAME
-          )
-        ]
+        [openAppButton],
+        [Keyboard.button.openApp('👤 Мои события', BOT_USERNAME)]
       ]);
 
       await ctx.reply(text, { attachments: [keyboard] });
@@ -84,22 +84,17 @@ export function startBot({ token, webAppUrl }) {
     // ============================================
     bot.command('my', async (ctx) => {
       const keyboard = Keyboard.inlineKeyboard([
-        [
-          Keyboard.button.openApp(
-            '👤 Открыть мои события',
-            BOT_USERNAME
-          )
-        ]
+        [Keyboard.button.openApp('👤 Открыть мои события', BOT_USERNAME)]
       ]);
 
       await ctx.reply('Вот твои события:', { attachments: [keyboard] });
     });
 
     // ============================================
-    // bot_started — пользователь запустил бота по диплинку
+    // bot_started
     // ============================================
     bot.on('bot_started', async (ctx) => {
-      const payload = ctx.update?.payload;
+      const payload = ctx.update?.payload || '';
       console.log('🤖 bot_started, payload:', payload);
 
       const userName = ctx.user?.name || 'друг';
@@ -108,15 +103,16 @@ export function startBot({ token, webAppUrl }) {
         `Привет, ${userName}! 👋\n\n` +
         `Нажми кнопку ниже, чтобы открыть афишу событий.`;
 
-      const keyboard = Keyboard.inlineKeyboard([
-        [
-          Keyboard.button.openApp(
-            '🎉 Открыть афишу',
-            BOT_USERNAME
-          )
-        ]
-      ]);
+      let openAppButton;
+      try {
+        openAppButton = payload
+          ? Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME, { start_param: payload })
+          : Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME);
+      } catch (e) {
+        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME);
+      }
 
+      const keyboard = Keyboard.inlineKeyboard([[openAppButton]]);
       await ctx.reply(text, { attachments: [keyboard] });
     });
 
@@ -125,17 +121,10 @@ export function startBot({ token, webAppUrl }) {
     // ============================================
     bot.on('message_created', async (ctx) => {
       const text = ctx.message?.body?.text || '';
-
-      // Игнорируем команды (они обрабатываются выше)
       if (text.startsWith('/')) return;
 
       const keyboard = Keyboard.inlineKeyboard([
-        [
-          Keyboard.button.openApp(
-            '🎉 Открыть афишу событий',
-            BOT_USERNAME
-          )
-        ]
+        [Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME)]
       ]);
 
       await ctx.reply('Нажми кнопку ниже, чтобы открыть афишу 👇', {
@@ -144,27 +133,56 @@ export function startBot({ token, webAppUrl }) {
     });
 
     // ============================================
-    // Callback-кнопки (если будут)
+    // Callback-кнопки
     // ============================================
     bot.on('message_callback', async (ctx) => {
       const payload = ctx.callback?.payload || '';
       console.log('📩 Callback:', payload);
 
       if (payload.startsWith('join_event:')) {
-        const eventId = parseInt(payload.split(':')[1]);
+        const eventId = parseInt(payload.split(':')[1], 10);
+        const userId = ctx.user?.user_id || ctx.user?.id;
         const event = db.findEvent(eventId);
 
-        if (event) {
-          await ctx.reply(`✅ Ты записался на «${event.title}»`);
-        } else {
+        if (!event) {
           await ctx.reply('⚠️ Событие не найдено');
+          return;
         }
+
+        if (String(event.organizer?.id) === String(userId)) {
+          await ctx.reply('ℹ️ Вы организатор этого события');
+          return;
+        }
+
+        if (event.maxParticipants && event.participants >= event.maxParticipants) {
+          await ctx.reply('⚠️ Мест больше нет');
+          return;
+        }
+
+        if (db.isUserJoined(eventId, userId)) {
+          await ctx.reply(`✅ Вы уже записаны на «${event.title}»`);
+          return;
+        }
+
+        db.addJoin(eventId, userId);
+        event.participants += 1;
+
+        try {
+          const startAt = parseEventDate(event);
+          if (startAt) {
+            const delayMs = startAt.getTime() - Date.now() - 60 * 60 * 1000;
+            if (delayMs > 0) scheduleReminder(event, userId, delayMs);
+          }
+        } catch (_) {}
+
+        if (event.organizer?.userId && String(event.organizer.userId) !== String(userId)) {
+          notifyUser(event.organizer.userId, `👥 Новый участник на «${event.title}»!`);
+        }
+
+        await ctx.reply(`✅ Ты записался на «${event.title}»`);
       }
     });
 
-    // ============================================
-    // Запуск
-    // ============================================
     bot.start();
     console.log('🤖 Бот MAX Events запущен!');
     console.log(`   Username: @${BOT_USERNAME}`);
@@ -176,11 +194,6 @@ export function startBot({ token, webAppUrl }) {
   }
 }
 
-/**
- * Отправка уведомления пользователю
- * @param {number} userId - ID пользователя
- * @param {string} text - текст (поддерживает Markdown)
- */
 export async function notifyUser(userId, text) {
   if (!bot) return;
   try {
@@ -188,4 +201,32 @@ export async function notifyUser(userId, text) {
   } catch (e) {
     console.warn('⚠️  Не удалось отправить уведомление:', e.message);
   }
+}
+
+export function scheduleReminder(event, userId, delayMs) {
+  if (!bot) return;
+  if (delayMs <= 0 || delayMs > 7 * 24 * 60 * 60 * 1000) return;
+
+  const key = `reminder:${event.id}:${userId}`;
+  db.clearReminder(key);
+
+  const timerId = setTimeout(() => {
+    notifyUser(userId, `⏰ Напоминание: «${event.title}» начнётся через час!`);
+    db.clearReminder(key);
+  }, delayMs);
+
+  db.setReminder(key, timerId);
+}
+
+function parseEventDate(event) {
+  if (!event) return null;
+  if (event.startAt) {
+    const d = new Date(event.startAt);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const raw = event.date;
+  if (!raw) return null;
+  const normalized = String(raw).replace(/,\s*/, 'T').trim();
+  const d = new Date(normalized);
+  return Number.isNaN(d.getTime()) ? null : d;
 }

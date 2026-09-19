@@ -1,41 +1,39 @@
 import React, { useState } from 'react';
 import EventCard from './EventCard';
+import Icon from './Icon';
+import { isEventOwner } from '../utils/eventOwnership';
 
-const MyEvents = ({ events, onJoin, onEventClick, joinedIds, userId }) => {
-  const [tab, setTab] = useState('joined'); // 'joined' | 'created'
+const MyEvents = ({
+  events, onJoin, onLeave, onDelete, onEdit, onEventClick,
+  joinedIds, likedIds = [], onToggleLike, userId, showCreatedInitially
+}) => {
+  const [tab, setTab] = useState(showCreatedInitially ? 'created' : 'joined');
+  const [confirmLeave, setConfirmLeave] = useState(null);
 
-  // События, на которые я записался
-  const joinedEvents = events.filter((e) => joinedIds.includes(e.id));
-
-  // События, которые создал я
-  const createdEvents = events.filter(
-    (e) => e.organizer && e.organizer.id === userId
-  );
-
+  const joinedEvents = events.filter((e) => joinedIds.includes(e.id) && !isEventOwner(e, userId));
+  const createdEvents = events.filter((e) => isEventOwner(e, userId));
   const displayEvents = tab === 'joined' ? joinedEvents : createdEvents;
+
+  const handleLeaveWithConfirm = (event) => {
+    setConfirmLeave(event);
+  };
 
   return (
     <div className="my-events-page">
       <h2 className="page-title">Мои события</h2>
 
       <div className="my-events-tabs">
-        <button
-          className={`my-tab ${tab === 'joined' ? 'active' : ''}`}
-          onClick={() => setTab('joined')}
-        >
-          🎟️ Я участвую ({joinedEvents.length})
+        <button className={`my-tab ${tab === 'joined' ? 'active' : ''}`} onClick={() => setTab('joined')}>
+          Участвую ({joinedEvents.length})
         </button>
-        <button
-          className={`my-tab ${tab === 'created' ? 'active' : ''}`}
-          onClick={() => setTab('created')}
-        >
-          ✨ Я создал ({createdEvents.length})
+        <button className={`my-tab ${tab === 'created' ? 'active' : ''}`} onClick={() => setTab('created')}>
+          Организую ({createdEvents.length})
         </button>
       </div>
 
       {displayEvents.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">{tab === 'joined' ? '🎟️' : '✨'}</div>
+          <div className="empty-icon"><Icon name={tab === 'joined' ? 'calendar' : 'plus'} size={44} /></div>
           <h3>
             {tab === 'joined'
               ? 'Вы пока не участвуете ни в одном событии'
@@ -54,11 +52,45 @@ const MyEvents = ({ events, onJoin, onEventClick, joinedIds, userId }) => {
               key={event.id}
               event={event}
               onJoin={onJoin}
+              onLeave={() => handleLeaveWithConfirm(event)}
               onClick={onEventClick}
               isJoined={joinedIds.includes(event.id)}
-              isOwner={event.organizer && event.organizer.id === userId}
+              isLiked={likedIds.includes(event.id)}
+              onToggleLike={onToggleLike}
+              isOwner={isEventOwner(event, userId)}
+              onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
+        </div>
+      )}
+
+      {confirmLeave && (
+        <div className="modal-overlay" onClick={() => setConfirmLeave(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Отменить участие?</h2>
+              <button className="close-btn" onClick={() => setConfirmLeave(null)}>
+                <Icon name="close" size={22} />
+              </button>
+            </div>
+            <p style={{ marginBottom: 16, color: '#555' }}>
+              Вы отмените участие в «{confirmLeave.title}».
+            </p>
+            <div className="modal-actions">
+              <button className="reset-btn" onClick={() => setConfirmLeave(null)}>Оставить</button>
+              <button
+                className="apply-btn"
+                onClick={() => {
+                  const ev = confirmLeave;
+                  setConfirmLeave(null);
+                  onLeave(ev);
+                }}
+              >
+                Отменить участие
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

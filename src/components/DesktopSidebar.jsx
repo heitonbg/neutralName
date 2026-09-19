@@ -1,12 +1,13 @@
 import React from 'react';
+import Icon from './Icon';
 
 const DesktopSidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
-    { id: 'feed', icon: '🏠', label: 'Главная' },
-    { id: 'map', icon: '🗺️', label: 'Карта' },
-    { id: 'create', icon: '➕', label: 'Создать событие' },
-    { id: 'my', icon: '👤', label: 'Мои события' },
-    { id: 'profile', icon: '⚙️', label: 'Профиль' }
+    { id: 'feed', icon: 'home', label: 'Главная' },
+    { id: 'map', icon: 'map', label: 'Карта' },
+    { id: 'create', icon: 'plus', label: 'Создать событие' },
+    { id: 'my', icon: 'user', label: 'Мои события' },
+    { id: 'profile', icon: 'grid', label: 'Профиль' }
   ];
 
   return (
@@ -26,7 +27,7 @@ const DesktopSidebar = ({ activeTab, setActiveTab }) => {
             onClick={() => setActiveTab(item.id)}
             className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
           >
-            <span className="sidebar-icon">{item.icon}</span>
+            <span className="sidebar-icon"><Icon name={item.icon} size={20} /></span>
             <span>{item.label}</span>
           </button>
         ))}

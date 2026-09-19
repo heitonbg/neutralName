@@ -1,156 +1,175 @@
-import React, { useState } from 'react';
-import { reportEvent } from '../api/events';
+import React, { useEffect, useState } from 'react';
+import Icon from './Icon';
+import EventOwnerMenu from './EventOwnerMenu';
+import EventLocationMap from './EventLocationMap';
+import Reviews from './Reviews';
+import { isEventOwner } from '../utils/eventOwnership';
 
-const EventDetailModal = ({ event, onClose, onJoin, isJoined, userId }) => {
-  const [showReport, setShowReport] = useState(false);
-  const [reportSent, setReportSent] = useState(false);
+const EventDetailModal = ({
+  event, onClose, onJoin, onLeave, onDelete, onEdit, onOpenChat,
+  isJoined, isLiked, onToggleLike, userId, userName,
+  reviews = [], onAddReview,
+  relatedEvents = [], onRelatedClick, onShare
+}) => {
+  const isOwner = isEventOwner(event, userId);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const gallery = (event.images?.length ? event.images : [event.image]).filter(Boolean);
 
-  if (!event) return null;
+  useEffect(() => setPhotoIndex(0), [event.id]);
+  useEffect(() => {
+    if (photoIndex >= gallery.length) setPhotoIndex(0);
+  }, [gallery.length, photoIndex]);
 
-  const handleReport = async (reason) => {
-    try {
-      await reportEvent(event.id, reason, userId);
-      setReportSent(true);
-      setTimeout(() => {
-        setShowReport(false);
-        setReportSent(false);
-      }, 2000);
-    } catch (e) {
-      alert('Не удалось отправить жалобу');
-    }
+  const showPhoto = (direction) => {
+    if (gallery.length < 2) return;
+    setPhotoIndex((index) => (index + direction + gallery.length) % gallery.length);
   };
 
-  const handleShare = (event) => {
-    const shareText =
-      `🎉 ${event.title}\n` +
-      `📅 ${event.date}\n` +
-      `📍 ${isJoined ? event.address : event.district}\n\n` +
-      `Присоединяйся!`;
-
-    // Через MAX Bridge — нативный диалог шаринга
-    if (window.MAXWebApp?.shareURL) {
-      try {
-        window.MAXWebApp.shareURL(
-          `https://max.ru/events/${event.id}`,
-          shareText
-        );
-        return;
-      } catch (e) {
-        console.warn('shareURL failed', e);
-      }
+  const handleShare = async () => {
+    if (onShare) { onShare(event); return; }
+    const text = `${event.title}\n${event.date}\n${isJoined ? event.address : event.district}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: event.title, text }); return; } catch {}
     }
-
-    // Fallback — копируем в буфер обмена
-    if (navigator.clipboard) {
-      navigator.clipboard
-        .writeText(shareText)
-        .then(() => alert('✅ Ссылка скопирована в буфер обмена'))
-        .catch(() => alert(shareText));
-    } else {
-      alert(shareText);
-    }
+    if (navigator.clipboard) await navigator.clipboard.writeText(text);
   };
+
+  const organizerInitials = event.organizer?.name?.split(' ').map((p) => p[0]).slice(0, 2).join('') || 'С';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content detail-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="close-btn-floating">
-          ✕
-        </button>
-
-        <img src={event.image} alt={event.title} className="detail-image" />
+    <div className="modal-overlay detail-overlay" onClick={onClose}>
+      <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className={`detail-hero ${isOwner ? 'is-owner' : ''}`}>
+          {isOwner && <EventOwnerMenu event={event} onDelete={onDelete} onEdit={onEdit} />}
+          <img src={gallery[photoIndex] || event.image} alt={`${event.title}, фото ${photoIndex + 1}`} className="detail-image" />
+          <button onClick={onClose} className="hero-round-btn hero-back" aria-label="Назад">
+            <Icon name="arrowLeft" size={24} />
+          </button>
+          <button
+            className={`hero-round-btn hero-like ${isLiked ? 'active' : ''}`}
+            onClick={() => onToggleLike(event.id)}
+            aria-label={isLiked ? 'Убрать из избранного' : 'В избранное'}
+          >
+            <Icon name="heart" size={23} filled={isLiked} />
+          </button>
+          {gallery.length > 1 && (
+            <>
+              <button className="gallery-arrow gallery-prev" onClick={() => showPhoto(-1)} aria-label="Предыдущее фото">
+                <Icon name="chevronRight" size={25} />
+              </button>
+              <button className="gallery-arrow gallery-next" onClick={() => showPhoto(1)} aria-label="Следующее фото">
+                <Icon name="chevronRight" size={25} />
+              </button>
+            </>
+          )}
+          <span className={`badge ${event.price === 'Бесплатно' ? 'free' : 'paid'} hero-price`}>{event.price}</span>
+          <span className="hero-counter">{photoIndex + 1} / {gallery.length}</span>
+        </div>
 
         <div className="detail-body">
-          <div className="detail-badges">
-            <span
-              className={`badge ${
-                event.price === 'Бесплатно' ? 'free' : 'paid'
-              }`}
-            >
-              {event.price}
-            </span>
-            <span className="badge category">{event.category}</span>
-          </div>
-
+          <span className="category-tag">{event.category}</span>
           <h2>{event.title}</h2>
-
-          {event.rating > 0 && (
-            <div className="detail-rating">
-              ★ <strong>{event.rating}</strong> ({event.reviewsCount} отзывов)
-            </div>
-          )}
-
           <p className="detail-description">{event.description}</p>
 
-          <div className="detail-info-list">
-            <div className="detail-info-row">
-              <span>📅</span>
-              <span>{event.date}</span>
+          <div className="detail-top-facts">
+            <div><Icon name="calendar" size={26} /><strong>{event.date}</strong><small>Встреча</small></div>
+            <div><Icon name="pin" size={26} /><strong>{event.distance}</strong><small>от вас</small></div>
+            <div>
+              <Icon name="people" size={26} />
+              <strong>
+                {event.participants}{event.maxParticipants ? ` / ${event.maxParticipants}` : ''} участников
+              </strong>
+              <small>{event.maxParticipants && event.participants >= event.maxParticipants ? 'Мест нет' : 'Уже идут'}</small>
             </div>
-            <div className="detail-info-row">
-              <span>📍</span>
-              <span>{isJoined ? event.address : event.district}</span>
-            </div>
-            <div className="detail-info-row">
-              <span>👥</span>
-              <span>
-                {event.participants} / {event.maxParticipants} участников
-              </span>
-            </div>
-            {event.organizer && (
-              <div className="detail-info-row">
-                <span>{event.organizer.avatar || '👤'}</span>
-                <span>Организатор: {event.organizer.name}</span>
-              </div>
-            )}
           </div>
 
-          <div className="detail-actions">
-            {!isJoined ? (
-              <button className="primary-btn" onClick={() => onJoin(event)}>
-                Присоединиться
-              </button>
-            ) : (
-              <button className="primary-btn disabled" disabled>
-                ✓ Вы уже участвуете
-              </button>
-            )}
-
-            <button className="share-btn" onClick={() => handleShare(event)}>
-              📤 Поделиться
-            </button>
-          </div>
-
-          <button
-            className="report-btn"
-            onClick={() => setShowReport(!showReport)}
-          >
-            ⚠️ Пожаловаться
+          <button className="venue-card" type="button">
+            <img src={gallery[0] || event.image} alt="" />
+            <span>
+              <strong>{event.organizer?.name || 'Организатор'}</strong>
+              <small>{isOwner || isJoined ? event.address : event.district}</small>
+            </span>
+            <Icon name="chevronRight" size={21} />
           </button>
 
-          {showReport && (
-            <div className="report-menu">
-              {reportSent ? (
-                <p className="report-success">✓ Жалоба отправлена</p>
-              ) : (
-                <>
-                  <button onClick={() => handleReport('spam')}>
-                    Спам / реклама
+          <EventLocationMap event={event} />
+
+          <section className="detail-section">
+            <h3>О событии</h3>
+            <p>Встречаемся в дружелюбной атмосфере, чтобы интересно провести время и познакомиться с новыми людьми. Подойдёт и тем, кто приходит один.</p>
+          </section>
+
+          <section className="detail-section expectations">
+            <h3>Что вас ждёт</h3>
+            <p>Большой выбор активностей и новых впечатлений</p>
+            <p>Дружелюбная компания и помощь организатора</p>
+            <p>Уютная атмосфера и общение</p>
+          </section>
+
+          <button className="organizer-card" type="button">
+            <span className="organizer-mark">{organizerInitials}</span>
+            <span>
+              <strong>{event.organizer?.name || 'Организатор'}</strong>
+              <small>Организатор события</small>
+            </span>
+            <Icon name="chevronRight" size={21} />
+          </button>
+
+          <Reviews
+            event={event}
+            userId={userId}
+            userName={userName}
+            reviews={reviews}
+            onSubmit={onAddReview}
+          />
+
+          {relatedEvents.length > 0 && (
+            <section className="detail-section related-section">
+              <h3>Похожие события</h3>
+              <div className="related-list">
+                {relatedEvents.map((rel) => (
+                  <button
+                    key={rel.id}
+                    className="related-card"
+                    onClick={() => { onClose(); onRelatedClick?.(rel); }}
+                  >
+                    <img src={rel.image} alt={rel.title} />
+                    <span>
+                      <strong>{rel.title}</strong>
+                      <small>{rel.date} · {rel.distance}</small>
+                    </span>
                   </button>
-                  <button onClick={() => handleReport('violence')}>
-                    Насилие / угрозы
-                  </button>
-                  <button onClick={() => handleReport('stalking')}>
-                    Домогательства
-                  </button>
-                  <button onClick={() => handleReport('other')}>Другое</button>
-                </>
-              )}
-            </div>
+                ))}
+              </div>
+            </section>
           )}
+
+          <div className="detail-actions">
+            {isOwner ? (
+              <div className="joined-status">
+                Вы организатор этого события. Управление — в меню «⋯» сверху.
+              </div>
+            ) : isJoined ? (
+              <>
+                <div className="joined-status">Вы участвуете</div>
+                <button className="primary-btn" onClick={() => onOpenChat(event)}>Перейти в чат</button>
+                <button className="leave-btn" onClick={() => onLeave(event)}>Отказаться</button>
+              </>
+            ) : (
+              <button
+                className="primary-btn"
+                disabled={event.maxParticipants && event.participants >= event.maxParticipants}
+                onClick={() => onJoin(event)}
+              >
+                {event.maxParticipants && event.participants >= event.maxParticipants
+                  ? 'Мест нет'
+                  : 'Присоединиться'}
+              </button>
+            )}
+            <button className="share-btn" onClick={handleShare}>
+              <Icon name="share" size={20} /> Поделиться
+            </button>
+          </div>
         </div>
       </div>
     </div>

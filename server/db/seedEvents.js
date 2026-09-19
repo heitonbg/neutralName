@@ -1,4 +1,8 @@
-export const MOCK_EVENTS = [
+// server/db/seedEvents.js
+// Данные для первичного заполнения БД на сервере.
+// Совпадают с mockEvents.js на фронте, но теперь источник правды — сервер.
+
+export const SEED_EVENTS = [
   {
     id: 1,
     title: 'Вечер настолок в «Смене»',
@@ -18,11 +22,14 @@ export const MOCK_EVENTS = [
       'https://images.unsplash.com/photo-1585504198199-20277593b94f?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=900&q=80'
     ],
-    lat: 55.796, lng: 49.108,
+    lat: 55.796,
+    lng: 49.108,
     district: 'Вахитовский район',
     address: 'ул. Бурхана Шахиди, 7',
     description: 'Новые люди, любимые игры и уютная атмосфера ✨',
-    organizer: { id: 101, name: 'Центр «Смена»' }
+    city: 'Казань',
+    organizer: { id: 101, name: 'Центр «Смена»' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 2,
@@ -36,11 +43,14 @@ export const MOCK_EVENTS = [
     rating: 4.9,
     reviewsCount: 31,
     image: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    lat: 55.790, lng: 49.120,
+    lat: 55.79,
+    lng: 49.12,
     district: 'Вахитовский район',
     address: 'Набережная озера Кабан',
     description: '5 км в приятной компании. Темп — для всех.',
-    organizer: { id: 102, name: 'Run Kazan' }
+    city: 'Казань',
+    organizer: { id: 102, name: 'Run Kazan' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 3,
@@ -54,11 +64,14 @@ export const MOCK_EVENTS = [
     rating: 4.7,
     reviewsCount: 18,
     image: 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    lat: 55.798, lng: 49.105,
+    lat: 55.798,
+    lng: 49.105,
     district: 'Вахитовский район',
     address: 'ул. Кремлевская, 2',
     description: 'Погружаемся в историю Казани вместе с гидом',
-    organizer: { id: 103, name: 'Музей РТ' }
+    city: 'Казань',
+    organizer: { id: 103, name: 'Музей РТ' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 4,
@@ -72,11 +85,14 @@ export const MOCK_EVENTS = [
     rating: 4.6,
     reviewsCount: 42,
     image: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    lat: 55.785, lng: 49.130,
+    lat: 55.785,
+    lng: 49.13,
     district: 'Вахитовский район',
     address: 'парк Чёрное озеро',
     description: 'Показываем «Движение вверх» в парке «Чёрное озеро»',
-    organizer: { id: 104, name: 'Kazan Cinema' }
+    city: 'Казань',
+    organizer: { id: 104, name: 'Kazan Cinema' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 5,
@@ -90,11 +106,14 @@ export const MOCK_EVENTS = [
     rating: 5.0,
     reviewsCount: 5,
     image: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    lat: 55.802, lng: 49.115,
+    lat: 55.802,
+    lng: 49.115,
     district: 'Советский район',
     address: 'Спортплощадка в парке Горького',
     description: 'Играем любительский футбол, весёлая компания, темп средний',
-    organizer: { id: 105, name: 'Алексей М.' }
+    city: 'Казань',
+    organizer: { id: 105, name: 'Алексей М.' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 6,
@@ -108,11 +127,15 @@ export const MOCK_EVENTS = [
     rating: 4.8,
     reviewsCount: 67,
     image: 'https://images.unsplash.com/photo-1543536448-d209d2d13a1c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    lat: null, lng: null,
+    lat: null,
+    lng: null,
     district: 'Онлайн',
     address: 'Онлайн (ссылка будет после регистрации)',
+    format: 'Онлайн',
     description: 'Угадываем фильмы 90-х, играем командой онлайн.',
-    organizer: { id: 106, name: 'QuizHub' }
+    city: 'Казань',
+    organizer: { id: 106, name: 'QuizHub' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 7,
@@ -126,11 +149,14 @@ export const MOCK_EVENTS = [
     rating: 4.9,
     reviewsCount: 8,
     image: 'https://images.unsplash.com/photo-1528136093623-3a4499f1295c?auto=format&fit=crop&w=800&q=80',
-    lat: 55.778, lng: 49.117,
+    lat: 55.778,
+    lng: 49.117,
     district: 'Старо-Татарская слобода',
     address: 'ул. Каюма Насыри, 25',
     description: 'Неспешно пройдёмся по красивым местам и заглянем за кофе.',
-    organizer: { id: 107, name: 'Лена' }
+    city: 'Казань',
+    organizer: { id: 107, name: 'Лена' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 8,
@@ -144,11 +170,14 @@ export const MOCK_EVENTS = [
     rating: 4.7,
     reviewsCount: 17,
     image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=800&q=80',
-    lat: 55.803, lng: 49.086,
+    lat: 55.803,
+    lng: 49.086,
     district: 'Московский район',
     address: 'ул. Декабристов, 85',
     description: 'Слушаем живую музыку, знакомимся и остаёмся на джем.',
-    organizer: { id: 108, name: 'Jazz Lab' }
+    city: 'Казань',
+    organizer: { id: 108, name: 'Jazz Lab' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 9,
@@ -169,11 +198,14 @@ export const MOCK_EVENTS = [
       'https://images.unsplash.com/photo-1562088287-bde35a1ea917?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=900&q=80'
     ],
-    lat: 55.82, lng: 49.12,
+    lat: 55.82,
+    lng: 49.12,
     district: 'Советский район',
     address: 'Горкинско-Ометьевский лес',
     description: 'Берите коврик — занятие подойдёт даже для первого раза.',
-    organizer: { id: 109, name: 'Тёплая йога' }
+    city: 'Казань',
+    organizer: { id: 109, name: 'Тёплая йога' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
     id: 10,
@@ -187,10 +219,13 @@ export const MOCK_EVENTS = [
     rating: 4.8,
     reviewsCount: 36,
     image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
-    lat: 55.79, lng: 49.097,
+    lat: 55.79,
+    lng: 49.097,
     district: 'Вахитовский район',
     address: 'Национальная библиотека РТ',
     description: 'Разбираем любимые фильмы и городские локации на большом экране.',
-    organizer: { id: 110, name: 'Нацбиблиотека РТ' }
+    city: 'Казань',
+    organizer: { id: 110, name: 'Нацбиблиотека РТ' },
+    createdAt: '2026-01-01T10:00:00.000Z'
   }
 ];

@@ -42,16 +42,51 @@ const splitDateTime = (event) => {
   return { date: '', time: '' };
 };
 
+// Парсим duration из события: может быть числом (минуты) или строкой ("90 мин", "1 ч 30 мин")
+const parseDuration = (duration) => {
+  if (!duration) return { hours: '', minutes: '' };
+  if (typeof duration === 'number') {
+    const h = Math.floor(duration / 60);
+    const m = duration % 60;
+    return { hours: h ? String(h) : '', minutes: m ? String(m) : '' };
+  }
+  const str = String(duration);
+  const hMatch = str.match(/(\d+)\s*ч/);
+  const mMatch = str.match(/(\d+)\s*мин/);
+  const onlyMinutes = /^\d+$/.test(str.trim()) ? parseInt(str, 10) : null;
+
+  if (onlyMinutes !== null) {
+    return { hours: Math.floor(onlyMinutes / 60) || '', minutes: onlyMinutes % 60 || '' };
+  }
+  return {
+    hours: hMatch ? hMatch[1] : '',
+    minutes: mMatch ? mMatch[1] : ''
+  };
+};
+
+// Форматируем duration из часов/минут в строку для отправки
+export const formatDuration = (hours, minutes) => {
+  const h = parseInt(hours, 10) || 0;
+  const m = parseInt(minutes, 10) || 0;
+  if (!h && !m) return '';
+  if (h && m) return `${h} ч ${m} мин`;
+  if (h) return `${h} ч`;
+  return `${m} мин`;
+};
+
 const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Казань', initialEvent = null }) => {
   const center = CITY_CENTERS[city] || CITY_CENTERS['Казань'];
   const isEdit = Boolean(initialEvent);
   const dt = splitDateTime(initialEvent);
+  const durationParsed = parseDuration(initialEvent?.duration);
 
   const [formData, setFormData] = useState({
     title: initialEvent?.title || '',
     category: initialEvent?.category || '',
     date: dt.date,
     time: dt.time,
+    durationHours: durationParsed.hours,
+    durationMinutes: durationParsed.minutes,
     format: initialEvent?.format || (initialEvent?.district === 'Онлайн' ? 'Онлайн' : 'Офлайн'),
     price: initialEvent?.price || 'Бесплатно',
     address: initialEvent?.address || '',
@@ -122,6 +157,19 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
       }
     }
 
+    // Валидация длительности
+    const h = parseInt(formData.durationHours, 10) || 0;
+    const m = parseInt(formData.durationMinutes, 10) || 0;
+    if (formData.durationHours && (h < 0 || h > 72)) {
+      nextErrors.duration = 'Часы: от 0 до 72';
+    }
+    if (formData.durationMinutes && (m < 0 || m > 59)) {
+      nextErrors.duration = 'Минуты: от 0 до 59';
+    }
+    if ((formData.durationHours || formData.durationMinutes) && h === 0 && m === 0) {
+      nextErrors.duration = 'Укажите продолжительность больше 0';
+    }
+
     if (formData.format === 'Офлайн') {
       if (!formData.address.trim()) nextErrors.address = 'Укажите место';
       else {
@@ -159,9 +207,12 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
       const preservedImages = formData.images.filter((img) => typeof img === 'string' && !img.startsWith('blob:'));
       const finalImages = [...preservedImages, ...uploadedUrls].filter(Boolean);
 
+      const durationStr = formatDuration(formData.durationHours, formData.durationMinutes);
+
       await onCreate({
         ...formData,
         date: `${formData.date}, ${formData.time}`,
+        duration: durationStr,
         address: formData.format === 'Онлайн' ? 'Онлайн' : formData.address,
         district: formData.format === 'Онлайн' ? 'Онлайн' : formData.district || formData.address,
         maxParticipants: Number.parseInt(formData.limit, 10) || 50,
@@ -232,23 +283,54 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
           {errors.category && <p className="error-text">{errors.category}</p>}
         </div>
 
-        <div className="form-row-2">
-          <div className="form-group">
-            <label>Дата</label>
+        {/* ★ ДАТА + ВРЕМЯ + ПРОДОЛЖИТЕЛЬНОСТЬ ★ */}
+        <div className="form-group">
+          <label>Дата и время</label>
+          <div className="form-row-2">
             <div className={`input-with-icon ${errors.date ? 'error' : ''}`}>
               <span className="input-icon"><Icon name="calendar" size={21} /></span>
               <input type="date" value={formData.date} onChange={(e) => setField('date', e.target.value)} />
             </div>
-            {errors.date && <p className="error-text">{errors.date}</p>}
-          </div>
-          <div className="form-group">
-            <label>Время</label>
             <div className={`input-with-icon ${errors.time ? 'error' : ''}`}>
               <span className="input-icon"><Icon name="clock" size={21} /></span>
               <input type="time" value={formData.time} onChange={(e) => setField('time', e.target.value)} />
             </div>
-            {errors.time && <p className="error-text">{errors.time}</p>}
           </div>
+          {(errors.date || errors.time) && (
+            <p className="error-text">{errors.date || errors.time}</p>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label>Продолжительность</label>
+          <div className="form-row-2">
+            <div className={`input-with-icon ${errors.duration ? 'error' : ''}`}>
+              <span className="input-icon"><Icon name="clock" size={21} /></span>
+              <input
+                type="number"
+                min="0"
+                max="72"
+                value={formData.durationHours}
+                onChange={(e) => setField('durationHours', e.target.value)}
+                placeholder="Часы"
+              />
+            </div>
+            <div className={`input-with-icon ${errors.duration ? 'error' : ''}`}>
+              <span className="input-icon"><Icon name="clock" size={21} /></span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={formData.durationMinutes}
+                onChange={(e) => setField('durationMinutes', e.target.value)}
+                placeholder="Минуты"
+              />
+            </div>
+          </div>
+          {errors.duration && <p className="error-text">{errors.duration}</p>}
+          <p className="hint-text-with-icon">
+            Укажите, сколько будет длиться событие. Например, для фильма — 2 ч 15 мин.
+          </p>
         </div>
 
         <div className="form-group">

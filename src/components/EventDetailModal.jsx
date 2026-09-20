@@ -77,13 +77,17 @@ const EventDetailModal = ({
           <h2>{event.title}</h2>
           <p className="detail-description">{event.description}</p>
 
+          {/* ★ ДОБАВЛЕНА ДЛИТЕЛЬНОСТЬ ★ */}
           <div className="detail-top-facts">
             <div><Icon name="calendar" size={26} /><strong>{event.date}</strong><small>Встреча</small></div>
+            {event.duration && (
+              <div><Icon name="clock" size={26} /><strong>{event.duration}</strong><small>Длительность</small></div>
+            )}
             <div><Icon name="pin" size={26} /><strong>{event.distance}</strong><small>от вас</small></div>
             <div>
               <Icon name="people" size={26} />
               <strong>
-                {event.participants}{event.maxParticipants ? ` / ${event.maxParticipants}` : ''} участников
+                {event.participants}{event.maxParticipants ? ` / ${event.maxParticipants}` : ''}
               </strong>
               <small>{event.maxParticipants && event.participants >= event.maxParticipants ? 'Мест нет' : 'Уже идут'}</small>
             </div>
@@ -105,8 +109,14 @@ const EventDetailModal = ({
 
           <EventLocationMap event={event} />
 
+          {/* ★ ДЛИТЕЛЬНОСТЬ В БЛОКЕ «О СОБЫТИИ» (если есть) ★ */}
           <section className="detail-section">
             <h3>О событии</h3>
+            {event.duration && (
+              <p className="detail-duration-line">
+                <Icon name="clock" size={15} /> Продолжительность: <strong>{event.duration}</strong>
+              </p>
+            )}
             <p>Встречаемся в дружелюбной атмосфере, чтобы интересно провести время и познакомиться с новыми людьми. Подойдёт и тем, кто приходит один.</p>
           </section>
 
@@ -152,7 +162,7 @@ const EventDetailModal = ({
                     <img src={rel.image} alt={rel.title} />
                     <span>
                       <strong>{rel.title}</strong>
-                      <small>{rel.date} · {rel.distance}</small>
+                      <small>{rel.date}{rel.duration ? ` · ${rel.duration}` : ''}</small>
                     </span>
                   </button>
                 ))}

@@ -23,10 +23,10 @@ import { maxBridge } from './utils/maxBridge';
 import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
 import { cityStorage } from './utils/cityStorage';
+import { findCityByName, getAllCities } from './utils/citySearch';   // ★
 import './App.css';
 
-import { findCityByName, getAllCities } from './utils/citySearch';
-
+// ★ DEFAULT_CITY из нового источника
 const DEFAULT_CITY =
   findCityByName('Казань') ||
   findCityByName('Казан') ||
@@ -198,7 +198,7 @@ function App() {
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
-    // ★ Фильтр по городу: по координатам (радиус 40 км) или по имени
+    // Фильтр по городу
     if (selectedCity) {
       result = result.filter((event) => {
         if (event.city && selectedCity.name) {
@@ -556,6 +556,7 @@ function App() {
                   likedIds={likedIds}
                   onToggleLike={handleToggleLike}
                   city={selectedCity?.name || 'Казань'}
+                  cityCoords={selectedCity ? [selectedCity.lat, selectedCity.lng] : null} 
                   userCoords={userCoords}
                 />
               )}
@@ -567,6 +568,7 @@ function App() {
                   userId={user?.id || 'guest'}
                   userName={user?.first_name || user?.name}
                   city={selectedCity?.name || 'Казань'}
+                  cityCoords={selectedCity ? { lat: selectedCity.lat, lng: selectedCity.lng } : null}  
                   initialEvent={editingEvent}
                 />
               )}

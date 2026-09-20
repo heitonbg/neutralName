@@ -1,16 +1,20 @@
+// src/components/CreateEventForm.jsx
 import React, { useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { moderateContent, validateAddress, moderateUrl } from '../utils/contentModeration';
 import { uploadImages } from '../api/events';
+import { findNearestCity } from '../utils/citySearch';
 import Icon from './Icon';
 
 const CATEGORIES = ['Настольные игры', 'Спорт', 'Культура', 'Кино', 'Прогулка', 'Музыка', 'Другое'];
+
 const CITY_CENTERS = {
   'Казань': { lat: 55.796, lng: 49.108 },
   'Москва': { lat: 55.7558, lng: 37.6176 },
   'Санкт-Петербург': { lat: 59.9343, lng: 30.3351 }
 };
+
 const ADDRESS_SUGGESTIONS = [
   { city: 'Казань', address: 'г. Казань, ул. Ленина, 101', district: 'Вахитовский район', lat: 55.792, lng: 49.12 },
   { city: 'Казань', address: 'г. Казань, ул. Кремлёвская, 35', district: 'Вахитовский район', lat: 55.798, lng: 49.106 },
@@ -42,7 +46,7 @@ const splitDateTime = (event) => {
   return { date: '', time: '' };
 };
 
-// Парсим duration из события: может быть числом (минуты) или строкой ("90 мин", "1 ч 30 мин")
+// Парсим duration из события
 const parseDuration = (duration) => {
   if (!duration) return { hours: '', minutes: '' };
   if (typeof duration === 'number') {
@@ -64,7 +68,7 @@ const parseDuration = (duration) => {
   };
 };
 
-// Форматируем duration из часов/минут в строку для отправки
+// Форматируем duration из часов/минут в строку
 export const formatDuration = (hours, minutes) => {
   const h = parseInt(hours, 10) || 0;
   const m = parseInt(minutes, 10) || 0;
@@ -91,6 +95,7 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
     price: initialEvent?.price || 'Бесплатно',
     address: initialEvent?.address || '',
     district: initialEvent?.district || '',
+    city: initialEvent?.city || city,           // ★ город хранится в форме
     limit: initialEvent?.maxParticipants ? String(initialEvent.maxParticipants) : '',
     description: initialEvent?.description || '',
     images: initialEvent?.images || (initialEvent?.image ? [initialEvent.image] : []),
@@ -104,6 +109,7 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [draftPoint, setDraftPoint] = useState(null);
+  const [detectedCity, setDetectedCity] = useState(null);  // ★ для подсказки пользователю
   const fileInputRef = useRef(null);
 
   const setField = (name, value) => {
@@ -112,7 +118,14 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
   };
 
   const chooseSuggestion = (suggestion) => {
-    setFormData((prev) => ({ ...prev, ...suggestion }));
+    setFormData((prev) => ({
+      ...prev,
+      address: suggestion.address,
+      district: suggestion.district,
+      city: suggestion.city || prev.city,
+      lat: suggestion.lat,
+      lng: suggestion.lng
+    }));
     setDraftPoint({ lat: suggestion.lat, lng: suggestion.lng });
     setShowMapPicker(true);
     setShowSuggestions(false);
@@ -139,6 +152,25 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
     }
   };
 
+  // ★★ Обработка клика по карте — определяем ближайший город ★★
+  const handleMapPointSelect = (latlng) => {
+    setDraftPoint(latlng);
+
+    const nearest = findNearestCity(latlng.lat, latlng.lng, 100);
+    setDetectedCity(nearest?.city || null);
+
+    setFormData((prev) => ({
+      ...prev,
+      lat: latlng.lat,
+      lng: latlng.lng,
+      // Город обновляем только если нашли
+      city: nearest?.city.name || prev.city,
+      district: nearest?.city.name
+        ? `${nearest.city.name}${nearest.city.regionName ? ', ' + nearest.city.regionName : ''}`
+        : prev.district
+    }));
+  };
+
   const validate = () => {
     const nextErrors = {};
     const titleCheck = moderateContent(formData.title);
@@ -157,7 +189,6 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
       }
     }
 
-    // Валидация длительности
     const h = parseInt(formData.durationHours, 10) || 0;
     const m = parseInt(formData.durationMinutes, 10) || 0;
     if (formData.durationHours && (h < 0 || h > 72)) {
@@ -214,13 +245,13 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
         date: `${formData.date}, ${formData.time}`,
         duration: durationStr,
         address: formData.format === 'Онлайн' ? 'Онлайн' : formData.address,
-        district: formData.format === 'Онлайн' ? 'Онлайн' : formData.district || formData.address,
+        district: formData.format === 'Онлайн' ? 'Онлайн' : (formData.district || formData.address),
+        city: formData.city || city,                 // ★ сохраняем определённый город
         maxParticipants: Number.parseInt(formData.limit, 10) || 50,
         participants: isEdit ? initialEvent.participants : 1,
         distance: '0.0 км',
         rating: initialEvent?.rating || 0,
         reviewsCount: initialEvent?.reviewsCount || 0,
-        city,
         image: finalImages[0] || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&q=80',
         images: finalImages.length ? finalImages : undefined,
         organizer: initialEvent?.organizer || { id: userId, name: userName || 'Вы' }
@@ -234,13 +265,22 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
 
   const confirmPoint = () => {
     if (!draftPoint) return;
+
+    const nearest = findNearestCity(draftPoint.lat, draftPoint.lng, 100);
+
     setFormData((prev) => ({
       ...prev,
       lat: draftPoint.lat,
       lng: draftPoint.lng,
-      address: prev.address || `Точка на карте, ${city}`,
-      district: prev.district || city
+      address: prev.address || (nearest
+        ? `Рядом с ${nearest.city.name}`
+        : `Точка на карте`),
+      district: nearest?.city.name
+        ? `${nearest.city.name}${nearest.city.regionName ? ', ' + nearest.city.regionName : ''}`
+        : (prev.district || prev.city),
+      city: nearest?.city.name || prev.city   // ★ обновляем город
     }));
+
     setShowMapPicker(false);
   };
 
@@ -283,7 +323,6 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
           {errors.category && <p className="error-text">{errors.category}</p>}
         </div>
 
-        {/* ★ ДАТА + ВРЕМЯ + ПРОДОЛЖИТЕЛЬНОСТЬ ★ */}
         <div className="form-group">
           <label>Дата и время</label>
           <div className="form-row-2">
@@ -360,7 +399,7 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
               {showSuggestions && (
                 <div className="address-suggestions">
                   {ADDRESS_SUGGESTIONS
-                    .filter((item) => item.city === city && item.address.toLowerCase().includes(formData.address.toLowerCase()))
+                    .filter((item) => item.city === formData.city && item.address.toLowerCase().includes(formData.address.toLowerCase()))
                     .map((item) => (
                       <button type="button" key={item.address} onMouseDown={() => chooseSuggestion(item)}>
                         <Icon name="pin" size={17} />
@@ -371,6 +410,7 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
               )}
             </div>
             {errors.address && <p className="error-text">{errors.address}</p>}
+
             <button
               type="button"
               className="map-picker-btn map-picker-full"
@@ -381,6 +421,7 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
             >
               <Icon name="map" size={21} />{showMapPicker ? 'Скрыть карту' : 'Указать на карте'}
             </button>
+
             {showMapPicker && (
               <div className="inline-location-picker">
                 <div className="picker-map">
@@ -391,9 +432,18 @@ const CreateEventForm = ({ onCreate, onCancel, userId, userName, city = 'Каз�
                     scrollWheelZoom
                   >
                     <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <PointSelector point={draftPoint} onSelect={setDraftPoint} />
+                    <PointSelector point={draftPoint} onSelect={handleMapPointSelect} />
                   </MapContainer>
                 </div>
+
+                {/* ★ Подсказка об определённом городе ★ */}
+                {detectedCity && (
+                  <p className="hint-text-with-icon" style={{ color: '#2786f8', fontWeight: 600 }}>
+                    <Icon name="pin" size={16} filled /> Определён город: {detectedCity.name}
+                    {detectedCity.regionName ? `, ${detectedCity.regionName}` : ''}
+                  </p>
+                )}
+
                 <button type="button" className="confirm-map-point" disabled={!draftPoint} onClick={confirmPoint}>
                   Готово, сохранить точку
                 </button>

@@ -10,6 +10,7 @@ import CreateEventForm from './components/CreateEventForm';
 import MyEvents from './components/MyEvents';
 import Profile from './components/Profile';
 import Icon from './components/Icon';
+import CityPickerModal from './components/CityPickerModal';
 import { EventSkeletonList } from './components/EventSkeleton';
 import {
   fetchEvents, fetchJoinedIds, createEvent, updateEvent,
@@ -19,9 +20,18 @@ import {
 import { isEventOwner } from './utils/eventOwnership';
 import DeleteEventDialog from './components/DeleteEventDialog';
 import { maxBridge } from './utils/maxBridge';
-import { haversineDistance, formatDistance } from './utils/distance';
+import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
+import { cityStorage } from './utils/cityStorage';
 import './App.css';
+
+import { findCityByName, getAllCities } from './utils/citySearch';
+
+const DEFAULT_CITY =
+  findCityByName('Казань') ||
+  findCityByName('Казан') ||
+  getAllCities().find((c) => c.name === 'Москва') ||
+  getAllCities()[0];
 
 function App() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -39,7 +49,7 @@ function App() {
   const [userCoords, setUserCoords] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [lastCreatedEventId, setLastCreatedEventId] = useState(null);
-  const [selectedCity, setSelectedCity] = useState('Казань');
+  const [selectedCity, setSelectedCity] = useState(() => cityStorage.get() || DEFAULT_CITY);
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -104,6 +114,7 @@ function App() {
   useEffect(() => { storage.setNotifications(notificationsOn); }, [notificationsOn]);
   useEffect(() => { storage.setTheme(theme); }, [theme]);
   useEffect(() => { document.body.dataset.theme = theme; }, [theme]);
+  useEffect(() => { cityStorage.set(selectedCity); }, [selectedCity]);
 
   useEffect(() => {
     maxBridge.init();
@@ -186,7 +197,16 @@ function App() {
 
   const filteredEvents = useMemo(() => {
     let result = [...events];
-    result = result.filter((event) => (event.city || 'Казань') === selectedCity);
+
+    // ★ Фильтр по городу: по координатам (радиус 40 км) или по имени
+    if (selectedCity) {
+      result = result.filter((event) => {
+        if (event.city && selectedCity.name) {
+          if (event.city === selectedCity.name) return true;
+        }
+        return eventBelongsToCity(event, selectedCity, 40);
+      });
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -403,7 +423,7 @@ function App() {
     pushToast(`Чат «${event.title}» откроется в MAX после подключения бота`, 'info');
   };
 
-  const handleCityChange = (city) => {
+  const handleCitySelect = (city) => {
     setSelectedCity(city);
     setIsCityOpen(false);
     setQuickFilter(null);
@@ -435,7 +455,7 @@ function App() {
                   События рядом{' '}
                   <button className="header-location" onClick={() => setIsCityOpen(true)}>
                     <span className="pin"><Icon name="pin" size={17} filled /></span>
-                    {selectedCity}
+                    {selectedCity?.name || 'Город'}
                     <span className="chevron"><Icon name="chevronDown" size={14} /></span>
                   </button>
                 </h1>
@@ -535,7 +555,7 @@ function App() {
                   joinedIds={joinedIds}
                   likedIds={likedIds}
                   onToggleLike={handleToggleLike}
-                  city={selectedCity}
+                  city={selectedCity?.name || 'Казань'}
                   userCoords={userCoords}
                 />
               )}
@@ -546,7 +566,7 @@ function App() {
                   onCancel={() => { setEditingEvent(null); setActiveTab('feed'); }}
                   userId={user?.id || 'guest'}
                   userName={user?.first_name || user?.name}
-                  city={selectedCity}
+                  city={selectedCity?.name || 'Казань'}
                   initialEvent={editingEvent}
                 />
               )}
@@ -671,25 +691,12 @@ function App() {
         ))}
       </div>
 
-      {isCityOpen && (
-        <div className="app-sheet-overlay" onClick={() => setIsCityOpen(false)}>
-          <div className="app-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="app-sheet-head">
-              <h2>Выберите город</h2>
-              <button onClick={() => setIsCityOpen(false)}><Icon name="close" size={22} /></button>
-            </div>
-            {['Казань', 'Москва', 'Санкт-Петербург'].map((city) => (
-              <button
-                className={`city-option ${selectedCity === city ? 'active' : ''}`}
-                key={city}
-                onClick={() => handleCityChange(city)}
-              >
-                {city}<span>{selectedCity === city ? '✓' : ''}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <CityPickerModal
+        isOpen={isCityOpen}
+        currentCity={selectedCity}
+        onSelect={handleCitySelect}
+        onClose={() => setIsCityOpen(false)}
+      />
 
       {isMenuOpen && (
         <div className="header-menu">

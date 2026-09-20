@@ -4,6 +4,7 @@ import SearchBar from './components/SearchBar';
 import EventFeed from './components/EventFeed';
 import EventMap from './components/EventMap';
 import EventDetailModal from './components/EventDetailModal';
+import OrganizerProfileModal from './components/OrganizerProfileModal';
 import FiltersModal from './components/FiltersModal';
 import CreateEventForm from './components/CreateEventForm';
 import MyEvents from './components/MyEvents';
@@ -31,6 +32,7 @@ function App() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedOrganizer, setSelectedOrganizer] = useState(null);
   const [joinedIds, setJoinedIds] = useState(() => storage.getJoined());
   const [likedIds, setLikedIds] = useState(() => storage.getLiked());
   const [user, setUser] = useState(null);
@@ -380,7 +382,15 @@ function App() {
 
   const handleEventClick = (event) => {
     track('event_opened', { eventId: event.id });
+    setSelectedOrganizer(null);
     setSelectedEvent(event);
+  };
+
+  const handleOpenOrganizer = (organizer) => {
+    if (!organizer?.id) return;
+    track('organizer_opened', { organizerId: organizer.id });
+    setSelectedEvent(null);
+    setSelectedOrganizer(organizer);
   };
 
   const handleApplyFilters = (f) => {
@@ -609,6 +619,7 @@ function App() {
           onJoin={handleJoinEvent}
           onLeave={handleLeaveEvent}
           onOpenChat={handleOpenChat}
+          onOpenOrganizer={handleOpenOrganizer}
           isJoined={joinedIds.includes(selectedEvent.id)}
           isLiked={likedIds.includes(selectedEvent.id)}
           onToggleLike={handleToggleLike}
@@ -616,12 +627,25 @@ function App() {
           userName={user?.first_name || user?.name}
           reviews={reviewsByEvent[selectedEvent.id] || []}
           onAddReview={handleAddReview}
-          relatedEvents={filteredEvents.filter((e) => e.id !== selectedEvent.id && e.category === selectedEvent.category).slice(0, 3)}
+          relatedEvents={filteredEvents.filter(
+            (e) => e.id !== selectedEvent.id && e.category === selectedEvent.category
+          ).slice(0, 3)}
           onRelatedClick={handleEventClick}
           onShare={(ev) => {
             const link = `https://max.ru/@t184_hakaton_bot?start=event_${ev.id}`;
             maxBridge.shareContent({ text: `${ev.title}\n${ev.date}`, link });
           }}
+        />
+      )}
+
+      {selectedOrganizer && (
+        <OrganizerProfileModal
+          organizer={selectedOrganizer}
+          events={events.filter(
+            (e) => String(e.organizer?.id) === String(selectedOrganizer.id)
+          )}
+          onClose={() => setSelectedOrganizer(null)}
+          onEventClick={handleEventClick}
         />
       )}
 

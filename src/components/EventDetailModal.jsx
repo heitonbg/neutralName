@@ -7,6 +7,7 @@ import { isEventOwner } from '../utils/eventOwnership';
 
 const EventDetailModal = ({
   event, onClose, onJoin, onLeave, onDelete, onEdit, onOpenChat,
+  onOpenOrganizer,
   isJoined, isLiked, onToggleLike, userId, userName,
   reviews = [], onAddReview,
   relatedEvents = [], onRelatedClick, onShare
@@ -32,6 +33,11 @@ const EventDetailModal = ({
       try { await navigator.share({ title: event.title, text }); return; } catch {}
     }
     if (navigator.clipboard) await navigator.clipboard.writeText(text);
+  };
+
+  const handleOpenOrganizer = () => {
+    if (!event.organizer?.id) return;
+    onOpenOrganizer?.(event.organizer);
   };
 
   const organizerInitials = event.organizer?.name?.split(' ').map((p) => p[0]).slice(0, 2).join('') || 'С';
@@ -83,7 +89,12 @@ const EventDetailModal = ({
             </div>
           </div>
 
-          <button className="venue-card" type="button">
+          <button
+            className="venue-card"
+            type="button"
+            onClick={handleOpenOrganizer}
+            disabled={!event.organizer?.id}
+          >
             <img src={gallery[0] || event.image} alt="" />
             <span>
               <strong>{event.organizer?.name || 'Организатор'}</strong>
@@ -106,11 +117,16 @@ const EventDetailModal = ({
             <p>Уютная атмосфера и общение</p>
           </section>
 
-          <button className="organizer-card" type="button">
+          <button
+            className="organizer-card"
+            type="button"
+            onClick={handleOpenOrganizer}
+            disabled={!event.organizer?.id}
+          >
             <span className="organizer-mark">{organizerInitials}</span>
             <span>
               <strong>{event.organizer?.name || 'Организатор'}</strong>
-              <small>Организатор события</small>
+              <small>Организатор события · посмотреть профиль</small>
             </span>
             <Icon name="chevronRight" size={21} />
           </button>

@@ -35,7 +35,10 @@ router.get('/:id', (req, res) => {
 
 // POST /api/events
 router.post('/', (req, res) => {
-  const { title, description, address, format, city, duration, images } = req.body;
+  const {
+    title, description, address, format, city,
+    duration, images
+  } = req.body;
 
   const titleCheck = moderateContent(title);
   if (!titleCheck.isClean) return res.status(400).json({ error: titleCheck.reason });
@@ -51,7 +54,8 @@ router.post('/', (req, res) => {
   const newEvent = {
     ...req.body,
     id: Date.now(),
-    duration: duration || '',
+    // ★ Продолжительность: строка вида "1 ч 30 мин", "45 мин" или пусто
+    duration: typeof duration === 'string' ? duration.trim() : '',
     images: Array.isArray(images) ? images : [],
     image: Array.isArray(images) && images[0]
       ? images[0]
@@ -70,10 +74,10 @@ router.post('/', (req, res) => {
   res.status(201).json(newEvent);
 });
 
-// PUT /api/events/:id — редактирование организатором
+// PUT /api/events/:id
 router.put('/:id', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, title, description, address, format, images } = req.body;
+  const { userId, title, description, address, format, images, duration } = req.body;
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
@@ -99,6 +103,8 @@ router.put('/:id', (req, res) => {
     ...event,
     ...req.body,
     id: eventId,
+    // ★ Продолжительность нормализуем
+    duration: typeof duration === 'string' ? duration.trim() : event.duration,
     images: Array.isArray(images) ? images : event.images,
     image: Array.isArray(images) && images[0] ? images[0] : event.image,
     updatedAt: new Date().toISOString()
@@ -178,14 +184,12 @@ router.delete('/:id', (req, res) => {
 
 // ============ REVIEWS ============
 
-// GET /api/events/:id/reviews
 router.get('/:id/reviews', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
   const reviews = db.reviews.filter((r) => r.eventId === eventId);
   res.json(reviews);
 });
 
-// POST /api/events/:id/reviews
 router.post('/:id/reviews', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
   const { userId, userName, rating, text } = req.body;
@@ -216,7 +220,6 @@ router.post('/:id/reviews', (req, res) => {
 
   db.addReview(review);
 
-  // Обновляем агрегированный рейтинг у события
   const event = db.findEvent(eventId);
   if (event) {
     const eventReviews = db.reviews.filter((r) => r.eventId === eventId);

@@ -71,6 +71,9 @@ const EventCard = ({
 
         <div className="event-card-meta">
           <span><Icon name="calendar" size={15} /> {event.date}</span>
+          {event.duration && (
+            <span><Icon name="clock" size={15} /> {event.duration}</span>
+          )}
           <span><Icon name="pin" size={15} /> {event.distance}</span>
           <span>
             <Icon name="people" size={15} /> {event.participants}

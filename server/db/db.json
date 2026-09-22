@@ -258,6 +258,8 @@
   ],
   "reports": [],
   "reviews": [],
-  "joinedUsers": {},
+  "joinedUsers": {
+    "4": []
+  },
   "seeded": true
 }

@@ -4,8 +4,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node --use-system-ca index.js",
+    "dev": "node --use-system-ca --watch index.js"
   },
   "dependencies": {
     "@maxhub/max-bot-api": "^0.3.1",

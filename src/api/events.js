@@ -9,7 +9,7 @@ import { isEventOwner } from '../utils/eventOwnership.js';
 // По умолчанию — mock, чтобы фронт работал без сервера.
 // ============================================
 const USE_MOCK = import.meta.env?.VITE_USE_MOCK !== 'false';
-const API = import.meta.env?.VITE_API_URL || 'http://localhost:3001';
+const API = import.meta.env?.VITE_API_URL || 'https://maxserver-iwrawww.amvera.io';
 
 // ============ МОКОВЫЕ ДАННЫЕ (в памяти) ============
 let mockEvents = [...MOCK_EVENTS];

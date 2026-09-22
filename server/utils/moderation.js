@@ -1,5 +1,7 @@
 // server/utils/moderation.js
-// Единый источник правил модерации. Реэкспорт из общего модуля.
+// Реэкспорт правил модерации из локальной копии внутри server/.
+// ⚠️ Файл moderationShared.js синхронизируется со src/utils/moderationShared.js
+// через scripts/sync-moderation.mjs (см. корневой package.json → predev/prebuild).
 import {
   moderateContent,
   validateAddress,
@@ -7,7 +9,7 @@ import {
   BANNED_WORDS,
   SUSPICIOUS_PATTERNS,
   DANGEROUS_ADDRESS_PATTERNS,
-} from '../../src/utils/moderationShared.js';
+} from './moderationShared.js';
 
 export {
   moderateContent,

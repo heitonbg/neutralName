@@ -1,18 +1,25 @@
 import { Bot, Keyboard } from '@maxhub/max-bot-api';
 import db from './db/database.js';
 
-// ⚠️ Username бота без символа @
-const BOT_USERNAME = 't184_hakaton_bot';
+// Значение приходит из server/.env. Username хранить в коде нельзя: бот
+// может быть другим на тестовом и production-окружении.
+const DEFAULT_BOT_USERNAME = 't280_hakaton_max_bot';
 
 let bot = null;
+let botStatus = 'disabled';
 
-export function startBot({ token, webAppUrl }) {
+export const getBotStatus = () => botStatus;
+
+export function startBot({ token, webAppUrl, username }) {
   if (!token || token.trim() === '') {
+    botStatus = 'disabled';
     console.warn('⚠️  BOT_TOKEN не задан — бот не запущен');
     return null;
   }
 
   try {
+    botStatus = 'starting';
+    const botUsername = String(username || DEFAULT_BOT_USERNAME).replace(/^@/, '');
     bot = new Bot(token);
 
     bot.api
@@ -51,15 +58,15 @@ export function startBot({ token, webAppUrl }) {
       let openAppButton;
       try {
         openAppButton = startParam
-          ? Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME, { start_param: startParam })
-          : Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME);
+          ? Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername, { start_param: startParam })
+          : Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
       } catch (e) {
-        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME);
+        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
       }
 
       const keyboard = Keyboard.inlineKeyboard([
         [openAppButton],
-        [Keyboard.button.openApp('👤 Мои события', BOT_USERNAME)]
+        [Keyboard.button.openApp('👤 Мои события', botUsername)]
       ]);
 
       await ctx.reply(text, { attachments: [keyboard] });
@@ -84,7 +91,7 @@ export function startBot({ token, webAppUrl }) {
     // ============================================
     bot.command('my', async (ctx) => {
       const keyboard = Keyboard.inlineKeyboard([
-        [Keyboard.button.openApp('👤 Открыть мои события', BOT_USERNAME)]
+        [Keyboard.button.openApp('👤 Открыть мои события', botUsername)]
       ]);
 
       await ctx.reply('Вот твои события:', { attachments: [keyboard] });
@@ -106,10 +113,10 @@ export function startBot({ token, webAppUrl }) {
       let openAppButton;
       try {
         openAppButton = payload
-          ? Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME, { start_param: payload })
-          : Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME);
+          ? Keyboard.button.openApp('🎉 Открыть афишу', botUsername, { start_param: payload })
+          : Keyboard.button.openApp('🎉 Открыть афишу', botUsername);
       } catch (e) {
-        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу', BOT_USERNAME);
+        openAppButton = Keyboard.button.openApp('🎉 Открыть афишу', botUsername);
       }
 
       const keyboard = Keyboard.inlineKeyboard([[openAppButton]]);
@@ -124,7 +131,7 @@ export function startBot({ token, webAppUrl }) {
       if (text.startsWith('/')) return;
 
       const keyboard = Keyboard.inlineKeyboard([
-        [Keyboard.button.openApp('🎉 Открыть афишу событий', BOT_USERNAME)]
+        [Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername)]
       ]);
 
       await ctx.reply('Нажми кнопку ниже, чтобы открыть афишу 👇', {
@@ -183,12 +190,21 @@ export function startBot({ token, webAppUrl }) {
       }
     });
 
-    bot.start();
-    console.log('🤖 Бот MAX Events запущен!');
-    console.log(`   Username: @${BOT_USERNAME}`);
+    Promise.resolve(bot.start())
+      .then(() => {
+        botStatus = 'running';
+        console.log('🤖 Бот MAX Events запущен!');
+        console.log(`   Username: @${botUsername}`);
+      })
+      .catch((error) => {
+        botStatus = 'error';
+        bot = null;
+        console.error('❌ MAX-бот не запущен:', error.message);
+      });
 
     return bot;
   } catch (e) {
+    botStatus = 'error';
     console.error('❌ Ошибка запуска бота:', e.message);
     return null;
   }

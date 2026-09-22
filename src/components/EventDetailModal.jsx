@@ -7,7 +7,7 @@ import { isEventOwner } from '../utils/eventOwnership';
 
 const EventDetailModal = ({
   event, onClose, onJoin, onLeave, onDelete, onEdit, onOpenChat,
-  onOpenOrganizer,
+  onOpenOrganizer, onOpenParticipants,
   isJoined, isLiked, onToggleLike, userId, userName,
   reviews = [], onAddReview,
   relatedEvents = [], onRelatedClick, onShare
@@ -84,13 +84,13 @@ const EventDetailModal = ({
               <div><Icon name="clock" size={26} /><strong>{event.duration}</strong><small>Длительность</small></div>
             )}
             <div><Icon name="pin" size={26} /><strong>{event.distance}</strong><small>от вас</small></div>
-            <div>
+            <button type="button" className="detail-fact-button" onClick={() => onOpenParticipants?.(event)}>
               <Icon name="people" size={26} />
               <strong>
                 {event.participants}{event.maxParticipants ? ` / ${event.maxParticipants}` : ''}
               </strong>
-              <small>{event.maxParticipants && event.participants >= event.maxParticipants ? 'Мест нет' : 'Уже идут'}</small>
-            </div>
+              <small>{event.maxParticipants && event.participants >= event.maxParticipants ? 'Мест нет' : 'Смотреть участников'}</small>
+            </button>
           </div>
 
           <button

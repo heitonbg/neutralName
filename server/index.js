@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -9,16 +9,19 @@ import reportsRouter from './routes/reports.js';
 import moderationRouter from './routes/moderation.js';
 import uploadRouter from './routes/upload.js';
 import citiesRouter from './routes/cities.js';
-import { startBot } from './bot.js';
+import { getBotStatus, startBot } from './bot.js';
 import db from './db/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Всегда читаем конфигурацию рядом с сервером, а не из текущей рабочей папки.
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'http://localhost:5173';
+const BOT_USERNAME = process.env.BOT_USERNAME || 't280_hakaton_max_bot';
 
 // ============================================
 // CORS — правильная настройка для preflight
@@ -69,7 +72,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    bot: BOT_TOKEN ? 'configured' : 'disabled',
+    bot: getBotStatus(),
     eventsCount: db.events.length,
     seeded: db.seeded === true,
     timestamp: new Date().toISOString()
@@ -114,6 +117,7 @@ app.listen(PORT, () => {
 
   startBot({
     token: BOT_TOKEN,
-    webAppUrl: WEB_APP_URL
+    webAppUrl: WEB_APP_URL,
+    username: BOT_USERNAME
   });
 });

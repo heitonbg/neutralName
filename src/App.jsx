@@ -5,6 +5,8 @@ import EventFeed from './components/EventFeed';
 import EventMap from './components/EventMap';
 import EventDetailModal from './components/EventDetailModal';
 import OrganizerProfileModal from './components/OrganizerProfileModal';
+import ParticipantsModal from './components/ParticipantsModal';
+import UserProfileModal from './components/UserProfileModal';
 import FiltersModal from './components/FiltersModal';
 import CreateEventForm from './components/CreateEventForm';
 import MyEvents from './components/MyEvents';
@@ -23,6 +25,7 @@ import { maxBridge } from './utils/maxBridge';
 import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
 import { cityStorage } from './utils/cityStorage';
+import { getDemoParticipants } from './data/demoParticipants';
 import { findCityByName, getAllCities } from './utils/citySearch';   // ★
 import './App.css';
 
@@ -32,6 +35,8 @@ const DEFAULT_CITY =
   findCityByName('Казан') ||
   getAllCities().find((c) => c.name === 'Москва') ||
   getAllCities()[0];
+
+const BOT_USERNAME = String(import.meta.env.VITE_BOT_USERNAME || 't280_hakaton_max_bot').replace(/^@/, '');
 
 function App() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -43,13 +48,20 @@ function App() {
   const [filters, setFilters] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedOrganizer, setSelectedOrganizer] = useState(null);
+  const [participantsEvent, setParticipantsEvent] = useState(null);
+  const [selectedPerson, setSelectedPerson] = useState(null);
   const [joinedIds, setJoinedIds] = useState(() => storage.getJoined());
   const [likedIds, setLikedIds] = useState(() => storage.getLiked());
   const [user, setUser] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [lastCreatedEventId, setLastCreatedEventId] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(() => cityStorage.get() || DEFAULT_CITY);
+  const [selectedCity, setSelectedCity] = useState(() => {
+    const saved = cityStorage.get();
+    // Переводим ранее сохранённые варианты вроде «Кемерава» в актуальный
+    // объект справочника, чтобы карта и фильтры получили верные координаты.
+    return findCityByName(saved?.name) || DEFAULT_CITY;
+  });
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -62,6 +74,7 @@ function App() {
   const [theme, setTheme] = useState(() => storage.getTheme());
   const [reviewsByEvent, setReviewsByEvent] = useState({});
   const userId = user?.id ?? 'guest';
+  const [profile, setProfile] = useState(() => storage.getProfile('guest'));
 
   const pushToast = useCallback((text, variant = 'success') => {
     const id = Date.now() + Math.random();
@@ -115,6 +128,7 @@ function App() {
   useEffect(() => { storage.setTheme(theme); }, [theme]);
   useEffect(() => { document.body.dataset.theme = theme; }, [theme]);
   useEffect(() => { cityStorage.set(selectedCity); }, [selectedCity]);
+  useEffect(() => { setProfile(storage.getProfile(userId)); }, [userId]);
 
   useEffect(() => {
     maxBridge.init();
@@ -413,6 +427,43 @@ function App() {
     setSelectedOrganizer(organizer);
   };
 
+  const handleOpenParticipants = (event) => {
+    setSelectedEvent(null);
+    setParticipantsEvent(event);
+  };
+
+  const handleOpenParticipantProfile = (person) => {
+    setParticipantsEvent(null);
+    setSelectedPerson(person);
+  };
+
+  const handleSaveProfile = (nextProfile) => {
+    const age = Number(nextProfile.age);
+    const sanitized = {
+      age: Number.isInteger(age) && age >= 14 && age <= 120 ? age : '',
+      city: String(nextProfile.city || '').trim().slice(0, 80),
+      about: String(nextProfile.about || '').trim().slice(0, 500),
+    };
+    setProfile(sanitized);
+    storage.setProfile(userId, sanitized);
+    pushToast('Профиль сохранён');
+  };
+
+  const participantProfiles = useMemo(() => {
+    if (!participantsEvent) return [];
+    const demo = getDemoParticipants(participantsEvent.id);
+    if (!joinedIds.includes(participantsEvent.id)) return demo;
+    const currentPerson = {
+      id: userId,
+      name: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Вы',
+      age: profile.age,
+      city: profile.city || selectedCity?.name,
+      about: profile.about,
+      eventIds: joinedIds,
+    };
+    return demo.some((person) => String(person.id) === String(userId)) ? demo : [currentPerson, ...demo];
+  }, [participantsEvent, joinedIds, userId, user, profile, selectedCity]);
+
   const handleApplyFilters = (f) => {
     setFilters(f);
     setQuickFilter(null);
@@ -592,6 +643,8 @@ function App() {
               {activeTab === 'profile' && (
                 <Profile
                   user={user}
+                  profile={profile}
+                  onSaveProfile={handleSaveProfile}
                   joinedIds={joinedIds}
                   createdCount={events.filter((e) => e.organizer && e.organizer.id === (user?.id || 'guest')).length}
                   notificationsOn={notificationsOn}
@@ -642,6 +695,7 @@ function App() {
           onLeave={handleLeaveEvent}
           onOpenChat={handleOpenChat}
           onOpenOrganizer={handleOpenOrganizer}
+          onOpenParticipants={handleOpenParticipants}
           isJoined={joinedIds.includes(selectedEvent.id)}
           isLiked={likedIds.includes(selectedEvent.id)}
           onToggleLike={handleToggleLike}
@@ -654,7 +708,7 @@ function App() {
           ).slice(0, 3)}
           onRelatedClick={handleEventClick}
           onShare={(ev) => {
-            const link = `https://max.ru/@t184_hakaton_bot?start=event_${ev.id}`;
+            const link = `https://max.ru/@${BOT_USERNAME}?start=event_${ev.id}`;
             maxBridge.shareContent({ text: `${ev.title}\n${ev.date}`, link });
           }}
         />
@@ -668,6 +722,25 @@ function App() {
           )}
           onClose={() => setSelectedOrganizer(null)}
           onEventClick={handleEventClick}
+        />
+      )}
+
+      {participantsEvent && (
+        <ParticipantsModal
+          event={participantsEvent}
+          participants={participantProfiles}
+          onClose={() => setParticipantsEvent(null)}
+          onOpenProfile={handleOpenParticipantProfile}
+        />
+      )}
+
+      {selectedPerson && (
+        <UserProfileModal
+          person={selectedPerson}
+          events={events.filter((event) => (selectedPerson.eventIds || []).includes(event.id))}
+          reviews={Object.values(reviewsByEvent).flat()}
+          onClose={() => setSelectedPerson(null)}
+          onEventClick={(event) => { setSelectedPerson(null); handleEventClick(event); }}
         />
       )}
 

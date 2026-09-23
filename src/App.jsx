@@ -63,7 +63,6 @@ function App() {
     return findCityByName(saved?.name) || DEFAULT_CITY;
   });
   const [isCityOpen, setIsCityOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -192,9 +191,9 @@ function App() {
   };
 
   const quickFilters = useMemo(() => {
-    const base = ['Сегодня', 'Бесплатно', 'Онлайн'];
+    const base = ['Сегодня', 'Бесплатно', 'Онлайн', 'Пушкинская карта', 'Волонтёрство', 'Спорт', 'Свободен сейчас', 'Туристический режим'];
     const cats = [...new Set(events.map((e) => e.category).filter(Boolean))];
-    return [...base, ...cats];
+    return [...new Set([...base, ...cats])];
   }, [events]);
 
   const activeFiltersCount = useMemo(() => {
@@ -237,6 +236,31 @@ function App() {
       result = result.filter((e) => e.price === 'Бесплатно');
     } else if (quickFilter === 'Онлайн') {
       result = result.filter((e) => e.district === 'Онлайн' || e.format === 'Онлайн');
+    } else if (quickFilter === 'Пушкинская карта') {
+      result = result.filter((e) => e.price === 'Пушкинская карта');
+    } else if (quickFilter === 'Волонтёрство') {
+      result = result.filter((e) => /волонт/i.test(`${e.category || ''} ${e.title || ''} ${e.description || ''}`));
+    } else if (quickFilter === 'Спорт') {
+      result = result.filter((e) => /спорт/i.test(e.category || ''));
+    } else if (quickFilter === 'Свободен сейчас') {
+      const now = Date.now();
+      result = result.filter((e) => {
+        const raw = String(e.date || '');
+        const time = raw.match(/(\d{1,2}:\d{2})/);
+        if (!time) return false;
+        const start = new Date();
+        start.setHours(Number(time[1].split(':')[0]), Number(time[1].split(':')[1]), 0, 0);
+        if (/завтра/i.test(raw)) start.setDate(start.getDate() + 1);
+        else if (!/сегодня/i.test(raw) && !/^\d{4}-\d{2}-\d{2}/.test(raw)) return false;
+        else if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+          const datePart = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+          const exact = datePart ? new Date(`${datePart[1]}T${time[1]}`) : new Date(NaN);
+          if (!Number.isNaN(exact.getTime())) start.setTime(exact.getTime());
+        }
+        return start.getTime() >= now && start.getTime() <= now + 60 * 60 * 1000;
+      });
+    } else if (quickFilter === 'Туристический режим') {
+      result = result.filter((e) => e.date.includes('Сегодня'));
     } else if (quickFilter) {
       result = result.filter((e) => e.category === quickFilter);
     }
@@ -287,6 +311,13 @@ function App() {
       case 'distance':
       default:
         result.sort((a, b) => a._distanceValue - b._distanceValue);
+    }
+
+    if (quickFilter === 'Туристический режим') {
+      result.sort((a, b) => {
+        const getTime = (event) => Number(String(event.date).match(/(\d{1,2}):(\d{2})/)?.[0].replace(':', '') || 0);
+        return getTime(a) - getTime(b);
+      });
     }
 
     return result;
@@ -471,7 +502,9 @@ function App() {
 
   const handleOpenChat = (event) => {
     track('chat_opened', { eventId: event.id });
-    pushToast(`Чат «${event.title}» откроется в MAX после подключения бота`, 'info');
+    const chatUrl = String(event.maxChatUrl || '').trim();
+    if (/^https:\/\//i.test(chatUrl)) window.open(chatUrl, '_blank', 'noopener,noreferrer');
+    else pushToast('Организатор пока не добавил ссылку на чат', 'info');
   };
 
   const handleCitySelect = (city) => {
@@ -510,13 +543,6 @@ function App() {
                     <span className="chevron"><Icon name="chevronDown" size={14} /></span>
                   </button>
                 </h1>
-                <button
-                  className={`header-more ${isMenuOpen ? 'active' : ''}`}
-                  onClick={() => setIsMenuOpen((v) => !v)}
-                  aria-label="Меню"
-                >
-                  <Icon name="more" size={24} />
-                </button>
               </div>
               {user && <p className="greeting">Больше, чем просто планы</p>}
             </div>
@@ -773,19 +799,6 @@ function App() {
         onClose={() => setIsCityOpen(false)}
       />
 
-      {isMenuOpen && (
-        <div className="header-menu">
-          <button onClick={() => { setActiveTab('my'); setIsMenuOpen(false); }}>
-            <Icon name="user" size={19} />Мои события
-          </button>
-          <button onClick={() => { setActiveTab('profile'); setIsMenuOpen(false); }}>
-            <Icon name="grid" size={19} />О приложении
-          </button>
-          <button onClick={() => setIsMenuOpen(false)}>
-            <Icon name="close" size={19} />Закрыть меню
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -183,6 +183,10 @@ export const checkHealth = async () => {
   catch (e) { return { status: 'error', message: e.message }; }
 };
 
+export const reverseGeocode = async (lat, lng) => {
+  return apiFetch(`/api/cities/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`);
+};
+
 // ============ REVIEWS ============
 
 export const fetchReviews = async (eventId) => {

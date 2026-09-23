@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../db/database.js';
 import { moderateContent, validateAddress } from '../utils/moderation.js';
-import { notifyUser } from '../bot.js';
+import { notifyUser, scheduleReminder } from '../bot.js';
 
 const router = express.Router();
 
@@ -135,6 +135,12 @@ router.post('/:id/join', (req, res) => {
   db.addJoin(eventId, userId);
   event.participants = (event.participants || 0) + 1;
   db.updateEvent(eventId, event);
+
+  const eventDate = new Date(String(event.date || '').replace(',', ' '));
+  if (!Number.isNaN(eventDate.getTime())) {
+    const reminderDelay = eventDate.getTime() - Date.now() - 60 * 60 * 1000;
+    if (reminderDelay > 0) scheduleReminder(event, userId, reminderDelay);
+  }
 
   if (event.organizer?.userId && String(event.organizer.userId) !== String(userId)) {
     notifyUser(event.organizer.userId, `👥 Новый участник на «${event.title}»!`);

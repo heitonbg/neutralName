@@ -27,6 +27,7 @@ import { storage } from './utils/storage';
 import { cityStorage } from './utils/cityStorage';
 import { getDemoParticipants } from './data/demoParticipants';
 import { findCityByName, getAllCities } from './utils/citySearch';   // ★
+import { isSameCalendarDay, isStartingWithinNextHour, parseEventDate } from './utils/eventDate';
 import './App.css';
 
 // ★ DEFAULT_CITY из нового источника
@@ -231,7 +232,8 @@ function App() {
     }
 
     if (quickFilter === 'Сегодня') {
-      result = result.filter((e) => e.date.includes('Сегодня'));
+      const now = new Date();
+      result = result.filter((e) => isSameCalendarDay(parseEventDate(e.date, now), now));
     } else if (quickFilter === 'Бесплатно') {
       result = result.filter((e) => e.price === 'Бесплатно');
     } else if (quickFilter === 'Онлайн') {
@@ -243,22 +245,7 @@ function App() {
     } else if (quickFilter === 'Спорт') {
       result = result.filter((e) => /спорт/i.test(e.category || ''));
     } else if (quickFilter === 'Свободен сейчас') {
-      const now = Date.now();
-      result = result.filter((e) => {
-        const raw = String(e.date || '');
-        const time = raw.match(/(\d{1,2}:\d{2})/);
-        if (!time) return false;
-        const start = new Date();
-        start.setHours(Number(time[1].split(':')[0]), Number(time[1].split(':')[1]), 0, 0);
-        if (/завтра/i.test(raw)) start.setDate(start.getDate() + 1);
-        else if (!/сегодня/i.test(raw) && !/^\d{4}-\d{2}-\d{2}/.test(raw)) return false;
-        else if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
-          const datePart = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-          const exact = datePart ? new Date(`${datePart[1]}T${time[1]}`) : new Date(NaN);
-          if (!Number.isNaN(exact.getTime())) start.setTime(exact.getTime());
-        }
-        return start.getTime() >= now && start.getTime() <= now + 60 * 60 * 1000;
-      });
+      result = result.filter((e) => isStartingWithinNextHour(e.date));
     } else if (quickFilter === 'Туристический режим') {
       result = result.filter((e) => e.date.includes('Сегодня'));
     } else if (quickFilter) {
@@ -281,7 +268,14 @@ function App() {
       }
       if (filters.format === 'Онлайн') result = result.filter(isOnline);
       else if (filters.format === 'Офлайн') result = result.filter((e) => !isOnline(e));
-      if (filters.time) result = result.filter((e) => e.date.includes(filters.time));
+      if (filters.time === 'Сейчас') {
+        result = result.filter((e) => isStartingWithinNextHour(e.date));
+      } else if (filters.time === 'Сегодня' || filters.time === 'Завтра') {
+        const now = new Date();
+        const target = new Date(now);
+        if (filters.time === 'Завтра') target.setDate(target.getDate() + 1);
+        result = result.filter((e) => isSameCalendarDay(parseEventDate(e.date, now), target));
+      }
       if (filters.distance) {
         const maxDistance = Number.parseFloat(filters.distance.replace(/[^0-9.]/g, ''));
         result = result.filter((e) => parseDistance(e.distance) <= maxDistance);
@@ -495,6 +489,24 @@ function App() {
     return demo.some((person) => String(person.id) === String(userId)) ? demo : [currentPerson, ...demo];
   }, [participantsEvent, joinedIds, userId, user, profile, selectedCity]);
 
+  const participantsByEvent = useMemo(() => {
+    const currentPerson = {
+      id: userId,
+      name: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Вы',
+      age: profile.age,
+      city: profile.city || selectedCity?.name,
+      about: profile.about,
+      eventIds: joinedIds,
+    };
+
+    return Object.fromEntries(events.map((event) => {
+      const demoParticipants = getDemoParticipants(event.id);
+      if (!joinedIds.includes(event.id)) return [event.id, demoParticipants];
+      const hasCurrentPerson = demoParticipants.some((person) => String(person.id) === String(userId));
+      return [event.id, hasCurrentPerson ? demoParticipants : [currentPerson, ...demoParticipants]];
+    }));
+  }, [events, joinedIds, userId, user, profile, selectedCity]);
+
   const handleApplyFilters = (f) => {
     setFilters(f);
     setQuickFilter(null);
@@ -632,6 +644,7 @@ function App() {
                   joinedIds={joinedIds}
                   likedIds={likedIds}
                   onToggleLike={handleToggleLike}
+                  participantsByEvent={participantsByEvent}
                   city={selectedCity?.name || 'Казань'}
                   cityCoords={selectedCity ? [selectedCity.lat, selectedCity.lng] : null} 
                   userCoords={userCoords}

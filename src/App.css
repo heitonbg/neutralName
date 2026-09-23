@@ -1227,11 +1227,11 @@ input, select, textarea { font-family: inherit; }
 .map-screen { position: relative; height: calc(100dvh - 246px); min-height: 590px; margin: 0 -22px; border-radius: 0; }
 .map-screen .leaflet-container { border-radius: 0; background: #dce8dd; }
 .event-map-marker-wrap { background: transparent; border: 0; }
-.event-map-marker { position: relative; display: flex; align-items: center; gap: 7px; width: max-content; min-width: 106px; padding: 5px 10px 5px 5px; border: 2px solid currentColor; border-radius: 12px; background: #fff; color: #2085f6; box-shadow: 0 3px 9px rgba(27, 49, 77, .16); }
+.event-map-marker { position: relative; display: flex; align-items: center; gap: 7px; width: max-content; min-width: 106px; max-width: 210px; padding: 5px 10px 5px 5px; border: 2px solid currentColor; border-radius: 12px; background: #fff; color: #2085f6; box-shadow: 0 3px 9px rgba(27, 49, 77, .16); }
 .event-map-marker::after { content: ''; position: absolute; bottom: -12px; left: 18px; width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px rgba(255,255,255,.84); }
 .event-map-marker.green { color: #25ab62; }.event-map-marker.pink { color: #ee4a86; }.event-map-marker.orange { color: #fa7341; }.event-map-marker.violet { color: #8d51e8; }
 .marker-symbol { width: 29px; height: 29px; border-radius: 50%; background: currentColor; opacity: .95; }
-.event-map-marker span:last-child { display: grid; line-height: 1.12; }.event-map-marker b { font-size: 11px; color: #24334b; }.event-map-marker small { font-size: 10px; color: #738097; margin-top: 2px; }
+.event-map-marker span:last-child { display: grid; line-height: 1.12; min-width: 0; }.event-map-marker b { font-size: 11px; color: #24334b; }.event-map-marker small { font-size: 10px; color: #738097; margin-top: 2px; }.event-map-marker .marker-people { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-float-button { position: absolute; right: 18px; z-index: 500; width: 48px; height: 48px; border-radius: 50%; background: #fff; color: #586a81; box-shadow: 0 3px 12px rgba(27,49,77,.15); }.compass-button { bottom: 218px; }.layers-button { bottom: 160px; }
 .map-event-preview { position: absolute; z-index: 500; left: 0; right: 0; bottom: 0; padding: 7px 13px 14px; border-radius: 22px 22px 0 0; background: #fff; box-shadow: 0 -3px 16px rgba(35,58,86,.13); }.map-sheet-handle { width: 37px; height: 4px; margin: 0 auto 8px; border-radius: 4px; background: #cbd3df; }.map-event-preview .event-card-horizontal { min-height: 152px; box-shadow: none; border: 0; }.map-event-preview .event-card-image { width: 116px; height: 130px; }
 

@@ -24,6 +24,13 @@ const categorySvg = {
   'Прогулка': '<svg viewBox="0 0 24 24"><circle cx="13" cy="5" r="2"/><path d="m11 9 3 3 3 1M11 9 8 13M14 12l-1 7M10 14l-3 5"/></svg>'
 };
 
+const escapeHtml = (value) => String(value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
+
 function MapEffects({ onMapReady }) {
   const map = useMap();
   useEffect(() => { onMapReady?.(map); }, [map, onMapReady]);
@@ -33,6 +40,7 @@ function MapEffects({ onMapReady }) {
 const EventMap = ({
   events, onJoin, onLeave, onDelete, userId, onEventClick,
   joinedIds = [], likedIds = [], onToggleLike,
+  participantsByEvent = {},
   city = 'Казань',
   cityCoords,                 // ★ координаты выбранного города [lat, lng]
   userCoords
@@ -47,15 +55,22 @@ const EventMap = ({
 
   const geoEvents = events.filter((event) => event.lat && event.lng);
 
-  const icons = useMemo(() => Object.fromEntries(geoEvents.map((event) => [event.id, L.divIcon({
-    className: 'event-map-marker-wrap',
-    html: `<div class="event-map-marker ${markerColor[event.category] || 'blue'}">
-      <span class="marker-symbol">${categorySvg[event.category] || categorySvg['Прогулка']}</span>
-      <span><b>${event.category}</b><small>${event.participants} участников</small></span>
-    </div>`,
-    iconSize: [150, 54],
-    iconAnchor: [26, 51]
-  })])), [geoEvents]);
+  const icons = useMemo(() => Object.fromEntries(geoEvents.map((event) => {
+    const people = participantsByEvent[event.id] || [];
+    const peopleLabel = people.length
+      ? `С вами: ${people.slice(0, 2).map((person) => escapeHtml(person.name)).join(', ')}${people.length > 2 ? ' и другие' : ''}`
+      : `${event.participants} участников`;
+
+    return [event.id, L.divIcon({
+      className: 'event-map-marker-wrap',
+      html: `<div class="event-map-marker ${markerColor[event.category] || 'blue'}">
+        <span class="marker-symbol">${categorySvg[event.category] || categorySvg['Прогулка']}</span>
+        <span><b>${event.category}</b><small class="marker-people">${peopleLabel}</small></span>
+      </div>`,
+      iconSize: [210, 54],
+      iconAnchor: [26, 51]
+    })];
+  })), [geoEvents, participantsByEvent]);
 
   const handleLocate = () => {
     if (!mapRef.current) return;

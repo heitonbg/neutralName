@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../db/database.js';
 import { moderateContent, validateAddress } from '../utils/moderation.js';
 import { notifyUser, scheduleReminder } from '../bot.js';
+import { parseEventDate } from '../utils/eventDate.js';
 
 const router = express.Router();
 
@@ -136,8 +137,8 @@ router.post('/:id/join', (req, res) => {
   event.participants = (event.participants || 0) + 1;
   db.updateEvent(eventId, event);
 
-  const eventDate = new Date(String(event.date || '').replace(',', ' '));
-  if (!Number.isNaN(eventDate.getTime())) {
+  const eventDate = parseEventDate(event.date);
+  if (eventDate) {
     const reminderDelay = eventDate.getTime() - Date.now() - 60 * 60 * 1000;
     if (reminderDelay > 0) scheduleReminder(event, userId, reminderDelay);
   }

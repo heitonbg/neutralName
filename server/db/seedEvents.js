@@ -1,6 +1,19 @@
 // server/db/seedEvents.js
 // Данные для первичного заполнения БД на сервере.
-// Совпадают с mockEvents.js на фронте, но теперь источник правды — сервер.
+// События хранят только organizerId — профиль подтягивается из SEED_USERS.
+
+export const SEED_USERS = {
+  '101': { id: '101', name: 'Центр «Смена»',    photo_url: 'https://i.pravatar.cc/300?img=12', age: 32, city: 'Казань', about: 'Городской центр современной культуры. Проводим настолки, квизы и лекции каждую неделю.' },
+  '102': { id: '102', name: 'Run Kazan',        photo_url: 'https://i.pravatar.cc/300?img=33', age: 28, city: 'Казань', about: 'Беговое сообщество Казани. Собираемся по вторникам и четвергам на набережной.' },
+  '103': { id: '103', name: 'Музей РТ',          photo_url: 'https://i.pravatar.cc/300?img=45', age: 45, city: 'Казань', about: 'Национальный музей Республики Татарстан. Экскурсии, выставки, лекции.' },
+  '104': { id: '104', name: 'Kazan Cinema',      photo_url: 'https://i.pravatar.cc/300?img=52', age: 30, city: 'Казань', about: 'Показываем кино в парках города. Бесплатные показы каждую пятницу.' },
+  '105': { id: '105', name: 'Алексей М.',        photo_url: 'https://i.pravatar.cc/300?img=15', age: 27, city: 'Казань', about: 'Играю в футбол с детства. Собираю команду на любительские матчи.' },
+  '106': { id: '106', name: 'QuizHub',           photo_url: 'https://i.pravatar.cc/300?img=60', age: 35, city: 'Москва', about: 'Онлайн-квизы каждую неделю. Кино, музыка, история.' },
+  '107': { id: '107', name: 'Лена',              photo_url: 'https://i.pravatar.cc/300?img=47', age: 26, city: 'Казань', about: 'Люблю гулять по городу и находить уютные кофейни. Присоединяйтесь!' },
+  '108': { id: '108', name: 'Jazz Lab',          photo_url: 'https://i.pravatar.cc/300?img=68', age: 40, city: 'Казань', about: 'Джазовые вечера и джемы. Играем вместе с гостями.' },
+  '109': { id: '109', name: 'Тёплая йога',       photo_url: 'https://i.pravatar.cc/300?img=44', age: 29, city: 'Казань', about: 'Провожу открытые тренировки по йоге в парках города. Все уровни.' },
+  '110': { id: '110', name: 'Нацбиблиотека РТ',  photo_url: 'https://i.pravatar.cc/300?img=25', age: 38, city: 'Казань', about: 'Лекции, кинопоказы и встречи с авторами в Национальной библиотеке.' },
+};
 
 export const SEED_EVENTS = [
   {
@@ -29,7 +42,7 @@ export const SEED_EVENTS = [
     address: 'ул. Бурхана Шахиди, 7',
     description: 'Новые люди, любимые игры и уютная атмосфера ✨',
     city: 'Казань',
-    organizer: { id: 101, name: 'Центр «Смена»' },
+    organizerId: '101',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -51,7 +64,7 @@ export const SEED_EVENTS = [
     address: 'Набережная озера Кабан',
     description: '5 км в приятной компании. Темп — для всех.',
     city: 'Казань',
-    organizer: { id: 102, name: 'Run Kazan' },
+    organizerId: '102',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -73,7 +86,7 @@ export const SEED_EVENTS = [
     address: 'ул. Кремлевская, 2',
     description: 'Погружаемся в историю Казани вместе с гидом',
     city: 'Казань',
-    organizer: { id: 103, name: 'Музей РТ' },
+    organizerId: '103',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -95,7 +108,7 @@ export const SEED_EVENTS = [
     address: 'парк Чёрное озеро',
     description: 'Показываем «Движение вверх» в парке «Чёрное озеро»',
     city: 'Казань',
-    organizer: { id: 104, name: 'Kazan Cinema' },
+    organizerId: '104',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -117,7 +130,7 @@ export const SEED_EVENTS = [
     address: 'Спортплощадка в парке Горького',
     description: 'Играем любительский футбол, весёлая компания, темп средний',
     city: 'Казань',
-    organizer: { id: 105, name: 'Алексей М.' },
+    organizerId: '105',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -140,7 +153,7 @@ export const SEED_EVENTS = [
     format: 'Онлайн',
     description: 'Угадываем фильмы 90-х, играем командой онлайн.',
     city: 'Казань',
-    organizer: { id: 106, name: 'QuizHub' },
+    organizerId: '106',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -162,7 +175,7 @@ export const SEED_EVENTS = [
     address: 'ул. Каюма Насыри, 25',
     description: 'Неспешно пройдёмся по красивым местам и заглянем за кофе.',
     city: 'Казань',
-    organizer: { id: 107, name: 'Лена' },
+    organizerId: '107',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -184,7 +197,7 @@ export const SEED_EVENTS = [
     address: 'ул. Декабристов, 85',
     description: 'Слушаем живую музыку, знакомимся и остаёмся на джем.',
     city: 'Казань',
-    organizer: { id: 108, name: 'Jazz Lab' },
+    organizerId: '108',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -213,7 +226,7 @@ export const SEED_EVENTS = [
     address: 'Горкинско-Ометьевский лес',
     description: 'Берите коврик — занятие подойдёт даже для первого раза.',
     city: 'Казань',
-    organizer: { id: 109, name: 'Тёплая йога' },
+    organizerId: '109',
     createdAt: '2026-01-01T10:00:00.000Z'
   },
   {
@@ -235,7 +248,7 @@ export const SEED_EVENTS = [
     address: 'Национальная библиотека РТ',
     description: 'Разбираем любимые фильмы и городские локации на большом экране.',
     city: 'Казань',
-    organizer: { id: 110, name: 'Нацбиблиотека РТ' },
+    organizerId: '110',
     createdAt: '2026-01-01T10:00:00.000Z'
   }
 ];

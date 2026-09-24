@@ -9,6 +9,7 @@ import reportsRouter from './routes/reports.js';
 import moderationRouter from './routes/moderation.js';
 import uploadRouter from './routes/upload.js';
 import citiesRouter from './routes/cities.js';
+import usersRouter from './routes/users.js';           // ★ новый
 import { getBotStatus, startBot } from './bot.js';
 import db from './db/database.js';
 
@@ -28,7 +29,6 @@ const BOT_USERNAME = process.env.BOT_USERNAME || 't280_hakaton_max_bot';
 // ============================================
 const allowedOrigins = [
   'https://webtomax.vercel.app',
-  // Добавь сюда другие твои фронтовые домены, если нужно
 ];
 
 app.use(
@@ -50,9 +50,8 @@ app.use(
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],   // ★ добавлен PATCH
     allowedHeaders: ['Content-Type', 'Authorization'],
-    // Явно указываем, что OPTIONS-запросы должны обрабатываться и получать 204
     optionsSuccessStatus: 204
   })
 );
@@ -74,6 +73,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     bot: getBotStatus(),
     eventsCount: db.events.length,
+    usersCount: Object.keys(db.users).length,           // ★ новый счётчик
     seeded: db.seeded === true,
     timestamp: new Date().toISOString()
   });
@@ -87,6 +87,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/cities', citiesRouter);
+app.use('/api/users', usersRouter);                     // ★ новый
 
 // ============================================
 // 404
@@ -111,6 +112,7 @@ app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════');
   console.log(`🚀 API-сервер:      http://localhost:${PORT}`);
   console.log(`📅 Событий в БД:    ${db.events.length}`);
+  console.log(`👥 Пользователей:   ${Object.keys(db.users).length}`);   // ★ новая строка
   console.log(`🌱 Засеяно seed'ом: ${db.seeded ? 'да' : 'нет'}`);
   console.log('═══════════════════════════════════════════');
   console.log('');

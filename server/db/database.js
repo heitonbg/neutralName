@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SEED_EVENTS } from './seedEvents.js';
+import { SEED_EVENTS, SEED_USERS } from './seedEvents.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +19,7 @@ const loadFromDisk = () => {
         events: raw.events || [],
         reports: raw.reports || [],
         reviews: raw.reviews || [],
+        users: raw.users || {},
         joinedUsers: new Map(
           Object.entries(raw.joinedUsers || {}).map(([k, v]) => [Number(k), new Set(v)])
         ),
@@ -33,6 +34,7 @@ const loadFromDisk = () => {
     events: [],
     reports: [],
     reviews: [],
+    users: {},
     joinedUsers: new Map(),
     reminders: new Map(),
     seeded: false
@@ -41,17 +43,48 @@ const loadFromDisk = () => {
 
 const persisted = loadFromDisk();
 
+// ★ Миграция: если в старых событиях есть organizer как объект —
+// превращаем в organizerId и переносим данные в users.
+if (persisted.events.length) {
+  let migrated = 0;
+  for (const event of persisted.events) {
+    if (event.organizer && typeof event.organizer === 'object') {
+      const orgId = String(event.organizer.id);
+      if (!persisted.users[orgId]) {
+        persisted.users[orgId] = {
+          id: orgId,
+          name: event.organizer.name || 'Организатор',
+          photo_url: event.organizer.photo_url || null,
+          age: event.organizer.age ?? null,
+          city: event.organizer.city || null,
+          about: event.organizer.about || null,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      event.organizerId = orgId;
+      delete event.organizer;
+      migrated++;
+    }
+  }
+  if (migrated > 0) {
+    console.log(`🔄 Миграция: ${migrated} событий переведены на organizerId`);
+    persisted.seeded = true;
+  }
+}
+
 // Если БД пустая и ранее не сидировалась — заполняем seed-данными.
 if (!persisted.seeded && persisted.events.length === 0) {
   persisted.events = SEED_EVENTS.map((e) => ({ ...e }));
+  persisted.users = { ...SEED_USERS };
   persisted.seeded = true;
-  console.log(`🌱 БД засеяна ${persisted.events.length} событиями`);
+  console.log(`🌱 БД засеяна ${persisted.events.length} событиями и ${Object.keys(persisted.users).length} пользователями`);
 }
 
 const db = {
   events: persisted.events,
   reports: persisted.reports,
   reviews: persisted.reviews,
+  users: persisted.users,
   joinedUsers: persisted.joinedUsers,
   reminders: persisted.reminders,
   seeded: persisted.seeded,
@@ -62,6 +95,7 @@ const db = {
         events: this.events,
         reports: this.reports,
         reviews: this.reviews,
+        users: this.users,
         joinedUsers: Object.fromEntries(
           [...this.joinedUsers.entries()].map(([k, v]) => [k, Array.from(v)])
         ),
@@ -73,6 +107,7 @@ const db = {
     }
   },
 
+  // ---------- EVENTS ----------
   findEvent(id) {
     return this.events.find((e) => e.id === id);
   },
@@ -96,6 +131,41 @@ const db = {
     this.save();
   },
 
+  // ★ Возвращает событие с подклеенным organizer из db.users
+  hydrateEvent(event) {
+    if (!event) return null;
+    const organizer = event.organizerId
+      ? this.users[String(event.organizerId)] || {
+          id: event.organizerId,
+          name: 'Организатор',
+        }
+      : null;
+    return { ...event, organizer };
+  },
+
+  hydrateEvents(events) {
+    return events.map((e) => this.hydrateEvent(e));
+  },
+
+  // ---------- USERS ----------
+  findUser(id) {
+    return this.users[String(id)] || null;
+  },
+
+  upsertUser(id, patch) {
+    const key = String(id);
+    const existing = this.users[key] || { id: key };
+    this.users[key] = {
+      ...existing,
+      ...patch,
+      id: key,
+      updatedAt: new Date().toISOString(),
+    };
+    this.save();
+    return this.users[key];
+  },
+
+  // ---------- REPORTS / REVIEWS ----------
   addReport(report) {
     this.reports.push(report);
     this.save();
@@ -108,6 +178,7 @@ const db = {
     return review;
   },
 
+  // ---------- JOIN ----------
   isUserJoined(eventId, userId) {
     if (!this.joinedUsers.has(eventId)) return false;
     return this.joinedUsers.get(eventId).has(String(userId));
@@ -127,6 +198,13 @@ const db = {
     this.save();
   },
 
+  // ★ Возвращает массив профилей участников события
+  getParticipants(eventId) {
+    const ids = this.joinedUsers.get(Number(eventId)) || new Set();
+    return [...ids].map((id) => this.users[String(id)] || { id, name: 'Участник' });
+  },
+
+  // ---------- REMINDERS ----------
   setReminder(key, timerId) {
     this.reminders.set(key, timerId);
   },
@@ -138,7 +216,6 @@ const db = {
   }
 };
 
-// Сохраняем стартовое состояние (в т.ч. после сида).
 db.save();
 
 export default db;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatEventDate } from '../utils/dateFormat';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 
@@ -70,7 +71,7 @@ const EventCard = ({
         <p className="event-card-description">{event.description}</p>
 
         <div className="event-card-meta">
-          <span><Icon name="calendar" size={15} /> {event.date}</span>
+          <span><Icon name="calendar" size={15} /> {formatEventDate(event.date)}</span>
           {event.duration && (
             <span><Icon name="clock" size={15} /> {event.duration}</span>
           )}

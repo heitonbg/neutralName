@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { formatEventDate } from '../utils/dateFormat';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 import EventLocationMap from './EventLocationMap';
@@ -77,10 +78,11 @@ const EventDetailModal = ({
           <span className="category-tag">{event.category}</span>
           <h2>{event.title}</h2>
           <p className="detail-description">{event.description}</p>
+          {(event.format === 'Онлайн' || event.district === 'Онлайн') && <div className="online-event-notice"><Icon name="monitor" size={17} /> Онлайн-событие</div>}
 
           {/* ★ ДОБАВЛЕНА ДЛИТЕЛЬНОСТЬ ★ */}
           <div className="detail-top-facts">
-            <div><Icon name="calendar" size={26} /><strong>{event.date}</strong><small>Встреча</small></div>
+            <div><Icon name="calendar" size={26} /><strong>{formatEventDate(event.date)}</strong><small>Встреча</small></div>
             {event.duration && (
               <div><Icon name="clock" size={26} /><strong>{event.duration}</strong><small>Длительность</small></div>
             )}

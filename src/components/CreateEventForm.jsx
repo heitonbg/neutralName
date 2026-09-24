@@ -101,7 +101,9 @@ const CreateEventForm = ({
     durationMinutes: durationParsed.minutes,
     format: initialEvent?.format || (initialEvent?.district === 'Онлайн' ? 'Онлайн' : 'Офлайн'),
     price: initialEvent?.price || 'Бесплатно',
-    address: initialEvent?.address || '',
+    address: /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/.test(initialEvent?.address || '')
+      ? `${initialEvent?.city || city}, место на карте`
+      : initialEvent?.address || '',
     district: initialEvent?.district || '',
     city: initialEvent?.city || city,
     limit: initialEvent?.maxParticipants ? String(initialEvent.maxParticipants) : '',
@@ -152,14 +154,6 @@ const CreateEventForm = ({
     event.target.value = '';
   };
 
-  const handleImageDrop = (event) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/'));
-    if (!files.length) return;
-    setNewFiles((prev) => [...prev, ...files].slice(0, Math.max(0, 5 - formData.images.length)));
-    setErrors((prev) => ({ ...prev, image: null }));
-  };
-
   const removeImage = (index) => {
     if (index < formData.images.length) {
       setField('images', formData.images.filter((_, i) => i !== index));
@@ -181,10 +175,25 @@ const CreateEventForm = ({
       lat: latlng.lat,
       lng: latlng.lng,
       city: nearest?.city.name || prev.city,
+      address: nearest ? `${nearest.city.name}, место на карте` : prev.address,
       district: nearest?.city.name
         ? `${nearest.city.name}${nearest.city.regionName ? ', ' + nearest.city.regionName : ''}`
         : prev.district
     }));
+
+    reverseGeocode(latlng.lat, latlng.lng).then((resolved) => {
+      if (!resolved) return;
+      const address = resolved.street
+        ? [resolved.street, resolved.district, resolved.city].filter(Boolean).join(', ')
+        : resolved.displayName || [resolved.district, resolved.city].filter(Boolean).join(', ');
+      if (!address) return;
+      setFormData((prev) => prev.lat === latlng.lat && prev.lng === latlng.lng ? {
+        ...prev,
+        address,
+        district: resolved.district || prev.district,
+        city: resolved.city || prev.city
+      } : prev);
+    }).catch(() => {});
   };
 
   const validate = () => {
@@ -290,7 +299,9 @@ const CreateEventForm = ({
       ...prev,
       lat: draftPoint.lat,
       lng: draftPoint.lng,
-      address: resolved?.displayName || [resolved?.city, resolved?.street].filter(Boolean).join(', ') || prev.address || `${draftPoint.lat.toFixed(5)}, ${draftPoint.lng.toFixed(5)}`,
+      address: resolved?.street
+        ? [resolved.street, resolved.district, resolved.city].filter(Boolean).join(', ')
+        : resolved?.displayName || [resolved?.district, resolved?.city].filter(Boolean).join(', ') || `${nearest?.city.name || prev.city}, место на карте`,
       district: resolved?.district || (nearest?.city.name
         ? `${nearest.city.name}${nearest.city.regionName ? ', ' + nearest.city.regionName : ''}`
         : (prev.district || prev.city)),
@@ -492,7 +503,17 @@ const CreateEventForm = ({
         <div className="form-group">
           <label>Фотографии события</label>
           <input ref={fileInputRef} type="file" multiple accept="image/png,image/jpeg,image/webp" hidden onChange={chooseImage} />
-          <div className="image-upload-row" onDragOver={(event) => event.preventDefault()} onDrop={handleImageDrop}>
+          <div
+            className="image-upload-row"
+            role="button"
+            tabIndex={0}
+            onClick={(event) => {
+              if (!event.target.closest('button')) fileInputRef.current?.click();
+            }}
+            onKeyDown={(event) => {
+              if (!event.target.closest('button') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); fileInputRef.current?.click(); }
+            }}
+          >
             <div className="image-preview-strip">
               {allImages.length ? allImages.map(({ src, index }) => (
                 <div className="image-preview-item" key={`${src.slice(0, 32)}-${index}`}>
@@ -507,7 +528,7 @@ const CreateEventForm = ({
               <button type="button" className="upload-image-btn" onClick={() => fileInputRef.current?.click()}>
                 Добавить фотографии
               </button>
-              <p>До 5 фото, PNG/JPG/WEBP</p>
+              <p>Нажмите, чтобы выбрать фотографии. До 5 фото, PNG/JPG/WEBP.</p>
             </div>
           </div>
           {errors.image && <p className="error-text">{errors.image}</p>}
@@ -538,7 +559,7 @@ const CreateEventForm = ({
           <input type="checkbox" id="publicPlace" checked={publicPlaceConfirmed} onChange={(e) => setPublicPlaceConfirmed(e.target.checked)} />
           <label htmlFor="publicPlace">Подтверждаю, что мероприятие проходит в общественном месте</label>
         </div>
-        {errors.publicPlace && <p className="error-text">{errors.publicPlace}</p>}
+        {errors.publicPlace && <p className="error-text public-place-error">{errors.publicPlace}</p>}
         {errors.submit && <p className="error-text submit-error">{errors.submit}</p>}
 
         <button type="submit" className="submit-btn-v2" disabled={submitting}>

@@ -45,6 +45,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [filters, setFilters] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedOrganizer, setSelectedOrganizer] = useState(null);
@@ -543,7 +544,26 @@ function App() {
                     <span className="chevron"><Icon name="chevronDown" size={14} /></span>
                   </button>
                 </h1>
+                <button
+                  className={`header-more ${isMenuOpen ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => setIsMenuOpen((value) => !value)}
+                  aria-label="Открыть меню"
+                  aria-expanded={isMenuOpen}
+                >
+                  <Icon name="more" size={23} />
+                </button>
               </div>
+              {isMenuOpen && (
+                <div className="header-menu">
+                  <button type="button" onClick={() => { setActiveTab('my'); setIsMenuOpen(false); }}>
+                    <Icon name="calendar" size={19} />Мои события
+                  </button>
+                  <button type="button" onClick={() => { setActiveTab('profile'); setIsMenuOpen(false); }}>
+                    <Icon name="user" size={19} />Профиль
+                  </button>
+                </div>
+              )}
               {user && <p className="greeting">Больше, чем просто планы</p>}
             </div>
 
@@ -609,8 +629,6 @@ function App() {
                   likedIds={likedIds}
                   onToggleLike={handleToggleLike}
                   pendingActions={pendingActions}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
                   activeFiltersCount={activeFiltersCount}
                   onResetFilters={() => { setFilters(null); setQuickFilter(null); }}
                   onCreate={() => {
@@ -619,6 +637,24 @@ function App() {
                     setActiveTab('create');
                   }}
                 />
+              )}
+              {activeTab === 'favorites' && (
+                <>
+                  <h2 className="favorites-title">Избранное</h2>
+                  <EventFeed
+                    userId={userId}
+                    onDelete={requestDelete}
+                    events={events.filter((event) => likedIds.includes(event.id))}
+                    onJoin={handleJoinEvent}
+                    onLeave={handleLeaveEvent}
+                    onEventClick={handleEventClick}
+                    joinedIds={joinedIds}
+                    likedIds={likedIds}
+                    onToggleLike={handleToggleLike}
+                    pendingActions={pendingActions}
+                    onCreate={() => { setEditingEvent(null); setActiveTab('create'); }}
+                  />
+                </>
               )}
 
               {activeTab === 'map' && (
@@ -700,6 +736,14 @@ function App() {
             <span className="icon"><Icon name="user" size={23} /></span>
             <span>Мои события</span>
           </button>
+          <button onClick={() => setActiveTab('favorites')} className={activeTab === 'favorites' ? 'active' : ''}>
+            <span className="icon"><Icon name="heart" size={23} /></span>
+            <span>Избранное</span>
+          </button>
+          <button onClick={() => setActiveTab('profile')} className={activeTab === 'profile' ? 'active' : ''}>
+            <span className="icon"><Icon name="user" size={23} /></span>
+            <span>Профиль</span>
+          </button>
         </div>
       </div>
 
@@ -708,6 +752,8 @@ function App() {
           onClose={() => setIsFiltersOpen(false)}
           onApply={handleApplyFilters}
           initialFilters={filters}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
         />
       )}
 

@@ -8,5 +8,6 @@ build:
   additionalCommands: cd server && npm install
 
 run:
-  scriptName: server/index.js
+  scriptName: server/start.js
   containerPort: 3001
+  persistenceMount: /data

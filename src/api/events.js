@@ -18,12 +18,16 @@ const mockUsers = {};          // ★ userId -> профиль
 
 // ============ API ============
 const apiFetch = async (path, options = {}) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
   const res = await fetch(`${API}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {})
     },
-    ...options
+    ...options,
+    signal: controller.signal
   });
   if (!res.ok) {
     let errorMessage = `Ошибка ${res.status}`;
@@ -31,6 +35,12 @@ const apiFetch = async (path, options = {}) => {
     throw new Error(errorMessage);
   }
   return res.status === 204 ? { success: true } : res.json();
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Сервер не ответил за 12 секунд. Попробуйте ещё раз.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 // ============ EVENTS ============

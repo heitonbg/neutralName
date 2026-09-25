@@ -11,7 +11,7 @@ import uploadRouter from './routes/upload.js';
 import citiesRouter from './routes/cities.js';
 import usersRouter from './routes/users.js';           // ★ новый
 import { getBotStatus, startBot } from './bot.js';
-import db from './db/database.js';
+import db from './db/sqliteDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

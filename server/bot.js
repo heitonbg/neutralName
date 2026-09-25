@@ -1,5 +1,5 @@
 import { Bot, Keyboard } from '@maxhub/max-bot-api';
-import db from './db/database.js';
+import db from './db/sqliteDatabase.js';
 
 // Значение приходит из server/.env. Username хранить в коде нельзя: бот
 // может быть другим на тестовом и production-окружении.

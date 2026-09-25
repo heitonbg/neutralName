@@ -1,5 +1,5 @@
 import express from 'express';
-import db from '../db/database.js';
+import db from '../db/sqliteDatabase.js';
 import { moderateContent, validateAddress } from '../utils/moderation.js';
 import { notifyUser, scheduleReminder } from '../bot.js';
 
@@ -206,9 +206,6 @@ router.delete('/:id', (req, res) => {
   }
 
   db.removeEvent(eventId);
-  db.joinedUsers.delete(eventId);
-  db.reviews = db.reviews.filter((r) => r.eventId !== eventId);
-  db.save();
   res.status(204).end();
 });
 

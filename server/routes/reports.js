@@ -1,5 +1,5 @@
 import express from 'express';
-import db from '../db/database.js';
+import db from '../db/sqliteDatabase.js';
 
 const router = express.Router();
 

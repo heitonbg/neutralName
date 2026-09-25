@@ -1,4 +1,13 @@
 MAX Events
+
+Хранение данных: сервер использует SQLite (Node.js 22.13+). При первом запуске
+`server/db/db.json` переносится в SQLite без изменения исходного файла.
+Локально база создаётся в `server/db/events.sqlite`. На Amvera `server/start.js`
+использует постоянный том `/data/events.sqlite`. При другом хостинге задайте
+`DB_PATH` как абсолютный путь на постоянном томе. Для переноса JSON из другого
+места задайте `LEGACY_DB_PATH`. SQLite-файлы и старый JSON исключены из Git.
+Для политики и соглашения до публикации заполните данные оператора и контакт
+в `public/privacy.html` и `public/terms.html`.
 Мини-приложение для поиска и создания событий рядом. Работает как MAX Mini App и в обычном браузере.
 
 https://img.shields.io/badge/MAX-Mini%20App-0077FF?style=flat-square

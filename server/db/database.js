@@ -216,6 +216,4 @@ const db = {
   }
 };
 
-db.save();
-
 export default db;

@@ -1,3 +1,9 @@
+# Runtime databases and their journal files
+server/db/db.json
+server/db/*.sqlite
+server/db/*.sqlite-shm
+server/db/*.sqlite-wal
+
 # ============================================
 # ENV FILES (секреты!)
 # ============================================

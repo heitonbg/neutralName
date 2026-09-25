@@ -124,7 +124,6 @@ function App() {
   useEffect(() => { storage.setLiked(likedIds); }, [likedIds]);
   useEffect(() => { storage.setSort(sortBy); }, [sortBy]);
   useEffect(() => { storage.setNotifications(notificationsOn); }, [notificationsOn]);
-  useEffect(() => { storage.setTheme(theme); }, [theme]);
   useEffect(() => { document.body.dataset.theme = theme; }, [theme]);
   useEffect(() => { cityStorage.set(selectedCity); }, [selectedCity]);
   useEffect(() => { setProfile(storage.getProfile(userId)); }, [userId]);
@@ -766,14 +765,14 @@ function App() {
                   notificationsOn={notificationsOn}
                   onToggleNotifications={setNotificationsOn}
                   theme={theme}
-                  onToggleTheme={setTheme}
+                  onToggleTheme={(next) => { storage.setTheme(next); document.body.dataset.theme = next; setTheme(next); }}
                 />
               )}
             </>
           )}
         </div>
 
-        <div className="bottom-nav">
+        {!selectedEvent && <div className="bottom-nav">
           <button onClick={() => setActiveTab('feed')} className={activeTab === 'feed' ? 'active' : ''}>
             <span className="icon"><Icon name="home" size={23} filled /></span>
             <span>Главная</span>
@@ -797,8 +796,8 @@ function App() {
             <span className="icon"><Icon name="user" size={23} /></span>
             <span>Профиль</span>
           </button>
-        </div>
-      </div>
+          </div>}
+          </div>
 
       {isFiltersOpen && (
         <FiltersModal
@@ -833,7 +832,7 @@ function App() {
           ).slice(0, 3)}
           onRelatedClick={handleEventClick}
           onShare={(ev) => {
-            const link = `https://max.ru/@${BOT_USERNAME}?start=event_${ev.id}`;
+            const link = `https://max.ru/${BOT_USERNAME}?startapp=event_${ev.id}`;
             maxBridge.shareContent({ text: `${ev.title}\n${ev.date}`, link });
           }}
         />

@@ -7,7 +7,7 @@ MAX Events
 `DB_PATH` как абсолютный путь на постоянном томе. Для переноса JSON из другого
 места задайте `LEGACY_DB_PATH`. SQLite-файлы и старый JSON исключены из Git.
 Для политики и соглашения до публикации заполните данные оператора и контакт
-в `public/privacy.html` и `public/terms.html`.
+в `src/components/LegalDocument.jsx` (документы открываются внутри профиля).
 Мини-приложение для поиска и создания событий рядом. Работает как MAX Mini App и в обычном браузере.
 
 https://img.shields.io/badge/MAX-Mini%20App-0077FF?style=flat-square
@@ -91,7 +91,7 @@ npm run dev        # с автоперезапуском
 Frontend (.env в корне):
 
 env
-VITE_USE_MOCK=true                       # true — моковые данные, false — реальный API
+VITE_USE_MOCK=true                       # true — моки; в production по умолчанию реальный API
 VITE_API_URL=http://localhost:3001       # URL backend-сервера
 Backend (server/.env):
 

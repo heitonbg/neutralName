@@ -32,10 +32,10 @@ test('legacy JSON migrates once and SQLite survives restart', () => {
     assert.equal(run(`import db from './server/db/sqliteDatabase.js';
       if (db.events.length !== 1 || db.findEvent(77)?.organizerId !== 'owner') process.exit(1);
       if (!db.isUserJoined(77, 'guest')) process.exit(2);
-      db.upsertUser('persisted', { name: 'Saved' });
+      db.upsertUser('persisted', { name: 'Saved', theme: 'dark' });
       console.log('ok');`), 'ok');
     assert.equal(run(`import db from './server/db/sqliteDatabase.js';
-      if (db.events.length !== 1 || db.findUser('persisted')?.name !== 'Saved') process.exit(1);
+      if (db.events.length !== 1 || db.findUser('persisted')?.name !== 'Saved' || db.findUser('persisted')?.theme !== 'dark') process.exit(1);
       console.log('ok');`), 'ok');
     assert.equal(fs.readFileSync(legacy, 'utf8'), original);
   } finally {

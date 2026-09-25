@@ -15,10 +15,10 @@ router.get('/:id', (req, res) => {
 
 /**
  * PATCH /api/users/:id
- * Обновляет профиль. Принимает name, photo_url, age, city, about.
+ * Обновляет профиль. Принимает name, photo_url, age, city, about, theme.
  */
 router.patch('/:id', (req, res) => {
-  const { name, photo_url, age, city, about } = req.body;
+  const { name, photo_url, age, city, about, theme } = req.body;
 
   const patch = {};
   if (typeof name === 'string') patch.name = name.trim().slice(0, 100);
@@ -32,6 +32,7 @@ router.patch('/:id', (req, res) => {
   }
 
   if (typeof city === 'string') patch.city = city.trim().slice(0, 80);
+  if (theme === 'dark' || theme === 'light') patch.theme = theme;
   if (typeof about === 'string') patch.about = about.trim().slice(0, 500);
 
   const updated = db.upsertUser(req.params.id, patch);

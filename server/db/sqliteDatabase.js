@@ -118,8 +118,15 @@ const db = {
     this.joinedUsers.get(Number(eventId))?.delete(String(userId));
   },
   getParticipants(eventId) {
-    return [...(this.joinedUsers.get(Number(eventId)) || [])]
-      .map((id) => this.users[id] || { id, name: 'Участник' });
+    const event = this.findEvent(Number(eventId));
+    const organizerId = event?.organizerId && String(event.organizerId);
+    const ids = [organizerId, ...(this.joinedUsers.get(Number(eventId)) || [])]
+      .filter(Boolean).map(String);
+    return [...new Set(ids)].map((id) => ({
+      ...(this.users[id] || { id, name: id === organizerId ? 'Организатор' : 'Участник' }),
+      id,
+      isOrganizer: id === organizerId
+    }));
   },
   setReminder(key, timerId) { this.reminders.set(key, timerId); },
   clearReminder(key) {

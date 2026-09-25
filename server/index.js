@@ -9,6 +9,7 @@ import reportsRouter from './routes/reports.js';
 import moderationRouter from './routes/moderation.js';
 import uploadRouter from './routes/upload.js';
 import citiesRouter from './routes/cities.js';
+import { uploadDir } from './utils/uploadStorage.js';
 import usersRouter from './routes/users.js';           // ★ новый
 import { getBotStatus, startBot } from './bot.js';
 import db from './db/sqliteDatabase.js';
@@ -63,7 +64,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Статика
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadDir));
 
 // ============================================
 // Health-check

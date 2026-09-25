@@ -1,25 +1,25 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+import { randomUUID } from 'node:crypto';
+import { uploadDir } from '../utils/uploadStorage.js';
 
 // Создаём папку, если её нет
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 // Настройка хранилища
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
+    const ext = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif'
+    }[file.mimetype];
+    const unique = `${randomUUID()}${ext}`;
     cb(null, unique);
   }
 });
@@ -58,7 +58,7 @@ router.post('/', upload.array('photos', 5), (req, res) => {
  * GET /api/upload/list — список всех загруженных файлов (для отладки)
  */
 router.get('/list', (req, res) => {
-  const files = fs.readdirSync(UPLOAD_DIR);
+  const files = fs.readdirSync(uploadDir);
   res.json({ files });
 });
 

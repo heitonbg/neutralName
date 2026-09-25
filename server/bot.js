@@ -1,8 +1,8 @@
+// server/bot.js
 import { Bot, Keyboard } from '@maxhub/max-bot-api';
 import db from './db/sqliteDatabase.js';
+import { scheduleEventReminder } from './reminders.js';
 
-// Значение приходит из server/.env. Username хранить в коде нельзя: бот
-// может быть другим на тестовом и production-окружении.
 const DEFAULT_BOT_USERNAME = 't280_hakaton_max_bot';
 
 let bot = null;
@@ -26,7 +26,7 @@ export function startBot({ token, webAppUrl, username }) {
       .setMyCommands([
         { name: 'start', description: 'Открыть афишу событий' },
         { name: 'my', description: 'Мои события' },
-        { name: 'help', description: 'Справка' }
+        { name: 'help', description: 'Справка' },
       ])
       .catch((e) => console.warn('Не удалось установить меню:', e.message));
 
@@ -58,7 +58,9 @@ export function startBot({ token, webAppUrl, username }) {
       let openAppButton;
       try {
         openAppButton = startParam
-          ? Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername, { start_param: startParam })
+          ? Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername, {
+              start_param: startParam,
+            })
           : Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
       } catch (e) {
         openAppButton = Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
@@ -66,7 +68,7 @@ export function startBot({ token, webAppUrl, username }) {
 
       const keyboard = Keyboard.inlineKeyboard([
         [openAppButton],
-        [Keyboard.button.openApp('👤 Мои события', botUsername)]
+        [Keyboard.button.openApp('👤 Мои события', botUsername)],
       ]);
 
       await ctx.reply(text, { attachments: [keyboard] });
@@ -91,7 +93,7 @@ export function startBot({ token, webAppUrl, username }) {
     // ============================================
     bot.command('my', async (ctx) => {
       const keyboard = Keyboard.inlineKeyboard([
-        [Keyboard.button.openApp('👤 Открыть мои события', botUsername)]
+        [Keyboard.button.openApp('👤 Открыть мои события', botUsername)],
       ]);
 
       await ctx.reply('Вот твои события:', { attachments: [keyboard] });
@@ -131,11 +133,11 @@ export function startBot({ token, webAppUrl, username }) {
       if (text.startsWith('/')) return;
 
       const keyboard = Keyboard.inlineKeyboard([
-        [Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername)]
+        [Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername)],
       ]);
 
       await ctx.reply('Нажми кнопку ниже, чтобы открыть афишу 👇', {
-        attachments: [keyboard]
+        attachments: [keyboard],
       });
     });
 
@@ -156,7 +158,7 @@ export function startBot({ token, webAppUrl, username }) {
           return;
         }
 
-        if (String(event.organizer?.id) === String(userId)) {
+        if (String(event.organizerId) === String(userId)) {
           await ctx.reply('ℹ️ Вы организатор этого события');
           return;
         }
@@ -173,17 +175,18 @@ export function startBot({ token, webAppUrl, username }) {
 
         db.addJoin(eventId, userId);
         event.participants += 1;
+        db.updateEvent(eventId, event);
 
-        try {
-          const startAt = parseEventDate(event);
-          if (startAt) {
-            const delayMs = startAt.getTime() - Date.now() - 60 * 60 * 1000;
-            if (delayMs > 0) scheduleReminder(event, userId, delayMs);
-          }
-        } catch (_) {}
+        // ★ Напоминание за час — с учётом флага уведомлений
+        scheduleEventReminder(event, userId);
 
-        if (event.organizer?.userId && String(event.organizer.userId) !== String(userId)) {
-          notifyUser(event.organizer.userId, `👥 Новый участник на «${event.title}»!`);
+        // ★ Уведомление организатору о новом участнике — только если он не отключил уведомления
+        if (
+          event.organizerId &&
+          String(event.organizerId) !== String(userId) &&
+          db.isNotificationsEnabled(event.organizerId)
+        ) {
+          notifyUser(event.organizerId, `👥 Новый участник на «${event.title}»!`);
         }
 
         await ctx.reply(`✅ Ты записался на «${event.title}»`);
@@ -217,32 +220,4 @@ export async function notifyUser(userId, text) {
   } catch (e) {
     console.warn('⚠️  Не удалось отправить уведомление:', e.message);
   }
-}
-
-export function scheduleReminder(event, userId, delayMs) {
-  if (!bot) return;
-  if (delayMs <= 0 || delayMs > 7 * 24 * 60 * 60 * 1000) return;
-
-  const key = `reminder:${event.id}:${userId}`;
-  db.clearReminder(key);
-
-  const timerId = setTimeout(() => {
-    notifyUser(userId, `⏰ Напоминание: «${event.title}» начнётся через час!`);
-    db.clearReminder(key);
-  }, delayMs);
-
-  db.setReminder(key, timerId);
-}
-
-function parseEventDate(event) {
-  if (!event) return null;
-  if (event.startAt) {
-    const d = new Date(event.startAt);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const raw = event.date;
-  if (!raw) return null;
-  const normalized = String(raw).replace(/,\s*/, 'T').trim();
-  const d = new Date(normalized);
-  return Number.isNaN(d.getTime()) ? null : d;
 }

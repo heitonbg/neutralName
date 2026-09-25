@@ -1,3 +1,4 @@
+// server/routes/users.js
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
 
@@ -15,10 +16,10 @@ router.get('/:id', (req, res) => {
 
 /**
  * PATCH /api/users/:id
- * Обновляет профиль. Принимает name, photo_url, age, city, about, theme.
+ * Обновляет профиль. Принимает name, photo_url, age, city, about, theme, notificationsEnabled.
  */
 router.patch('/:id', (req, res) => {
-  const { name, photo_url, age, city, about, theme } = req.body;
+  const { name, photo_url, age, city, about, theme, notificationsEnabled } = req.body;
 
   const patch = {};
   if (typeof name === 'string') patch.name = name.trim().slice(0, 100);
@@ -34,6 +35,16 @@ router.patch('/:id', (req, res) => {
   if (typeof city === 'string') patch.city = city.trim().slice(0, 80);
   if (theme === 'dark' || theme === 'light') patch.theme = theme;
   if (typeof about === 'string') patch.about = about.trim().slice(0, 500);
+
+  // ★ Уведомления
+  if (typeof notificationsEnabled === 'boolean') {
+    patch.notificationsEnabled = notificationsEnabled;
+
+    // ★ Если пользователь отключил уведомления — снимаем все запланированные напоминания
+    if (notificationsEnabled === false) {
+      db.clearAllUserReminders(String(req.params.id));
+    }
+  }
 
   const updated = db.upsertUser(req.params.id, patch);
   res.json(updated);

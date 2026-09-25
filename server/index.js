@@ -1,3 +1,4 @@
+// server/index.js
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
@@ -9,14 +10,15 @@ import reportsRouter from './routes/reports.js';
 import moderationRouter from './routes/moderation.js';
 import uploadRouter from './routes/upload.js';
 import citiesRouter from './routes/cities.js';
+import usersRouter from './routes/users.js';
+import bootstrapRouter from './routes/bootstrap.js';
 import { uploadDir } from './utils/uploadStorage.js';
-import usersRouter from './routes/users.js';           // ★ новый
 import { getBotStatus, startBot } from './bot.js';
+import { startReminderWorker } from './reminders.js';
 import db from './db/sqliteDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Всегда читаем конфигурацию рядом с сервером, а не из текущей рабочей папки.
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
@@ -26,24 +28,24 @@ const WEB_APP_URL = process.env.WEB_APP_URL || 'http://localhost:5173';
 const BOT_USERNAME = process.env.BOT_USERNAME || 't280_hakaton_max_bot';
 
 // ============================================
-// CORS — правильная настройка для preflight
+// CORS
 // ============================================
-const allowedOrigins = [
-  'https://webtomax.vercel.app',
-];
+const allowedOrigins = ['https://webtomax.vercel.app'];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Разрешаем запросы без origin (Postman, curl, серверные вызовы)
       if (!origin) return callback(null, true);
-
-      // Разрешаем локальную разработку и туннели
-      const isLocal = /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
-      const isTunnel = /\.tuna\.am$/.test(origin) || /\.ngrok-free\.app$/.test(origin) || /\.ngrok\.io$/.test(origin);
+      const isLocal =
+        /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+      const isTunnel =
+        /\.tuna\.am$/.test(origin) ||
+        /\.ngrok-free\.app$/.test(origin) ||
+        /\.ngrok\.io$/.test(origin);
       const isVercel = /\.vercel\.app$/.test(origin);
+      const isAmvera = /\.amvera\.io$/.test(origin);
 
-      if (isLocal || isTunnel || isVercel || allowedOrigins.includes(origin)) {
+      if (isLocal || isTunnel || isVercel || isAmvera || allowedOrigins.includes(origin)) {
         callback(null, origin);
       } else {
         console.warn('🚫 CORS blocked origin:', origin);
@@ -51,9 +53,9 @@ app.use(
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],   // ★ добавлен PATCH
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204
+    optionsSuccessStatus: 204,
   })
 );
 
@@ -62,8 +64,6 @@ app.use(
 // ============================================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Статика
 app.use('/uploads', express.static(uploadDir));
 
 // ============================================
@@ -74,21 +74,22 @@ app.get('/health', (req, res) => {
     status: 'ok',
     bot: getBotStatus(),
     eventsCount: db.events.length,
-    usersCount: Object.keys(db.users).length,           // ★ новый счётчик
+    usersCount: Object.keys(db.users).length,
     seeded: db.seeded === true,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 // ============================================
 // API-роуты
 // ============================================
+app.use('/api/bootstrap', bootstrapRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/cities', citiesRouter);
-app.use('/api/users', usersRouter);                     // ★ новый
+app.use('/api/users', usersRouter);
 
 // ============================================
 // 404
@@ -113,7 +114,7 @@ app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════');
   console.log(`🚀 API-сервер:      http://localhost:${PORT}`);
   console.log(`📅 Событий в БД:    ${db.events.length}`);
-  console.log(`👥 Пользователей:   ${Object.keys(db.users).length}`);   // ★ новая строка
+  console.log(`👥 Пользователей:   ${Object.keys(db.users).length}`);
   console.log(`🌱 Засеяно seed'ом: ${db.seeded ? 'да' : 'нет'}`);
   console.log('═══════════════════════════════════════════');
   console.log('');
@@ -121,6 +122,9 @@ app.listen(PORT, () => {
   startBot({
     token: BOT_TOKEN,
     webAppUrl: WEB_APP_URL,
-    username: BOT_USERNAME
+    username: BOT_USERNAME,
   });
+
+  // ★ Воркер напоминаний за час до события
+  startReminderWorker();
 });

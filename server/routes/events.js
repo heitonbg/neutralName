@@ -1,11 +1,42 @@
+// server/routes/events.js
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
 import { moderateContent, validateAddress } from '../utils/moderation.js';
-import { notifyUser, scheduleReminder } from '../bot.js';
+import { notifyUser } from '../bot.js';
+import { scheduleEventReminder, cancelEventReminder } from '../reminders.js';
 
 const router = express.Router();
 
-// GET /api/events?city=Казань&category=...&price=...
+// Хелпер: событие завершилось?
+function isEventPast(event) {
+  const raw = String(event?.date || '').trim();
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T,\s]+(\d{1,2}):(\d{2}))?/);
+  if (!m) return false;
+
+  const start = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4] || 0),
+    Number(m[5] || 0)
+  );
+  if (Number.isNaN(start.getTime())) return false;
+
+  let durationMs = 2 * 60 * 60 * 1000;
+  const durStr = String(event.duration || '').trim();
+  if (/^\d+$/.test(durStr)) {
+    durationMs = Number(durStr) * 60 * 1000;
+  } else if (durStr) {
+    const h = Number(durStr.match(/(\d+)\s*ч/)?.[1] || 0);
+    const mm = Number(durStr.match(/(\d+)\s*мин/)?.[1] || 0);
+    const total = (h * 60 + mm) * 60 * 1000;
+    if (total > 0) durationMs = total;
+  }
+
+  return Date.now() >= start.getTime() + durationMs;
+}
+
+// GET /api/events?city=...&category=...&price=...
 router.get('/', (req, res) => {
   const { category, price, city } = req.query;
   let result = [...db.events];
@@ -15,12 +46,23 @@ router.get('/', (req, res) => {
   res.json(db.hydrateEvents(result));
 });
 
-// GET /api/events/joined?userId=123
+// GET /api/events/joined?userId=123 — текущие участия
 router.get('/joined', (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.json({ eventIds: [] });
   const eventIds = [];
   for (const [eventId, users] of db.joinedUsers.entries()) {
+    if (users.has(String(userId))) eventIds.push(Number(eventId));
+  }
+  res.json({ eventIds });
+});
+
+// GET /api/events/participated?userId=123 — все, кто когда-либо участвовал
+router.get('/participated', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.json({ eventIds: [] });
+  const eventIds = [];
+  for (const [eventId, users] of db.participatedUsers.entries()) {
     if (users.has(String(userId))) eventIds.push(Number(eventId));
   }
   res.json({ eventIds });
@@ -33,7 +75,7 @@ router.get('/:id', (req, res) => {
   res.json(db.hydrateEvent(event));
 });
 
-// ★ GET /api/events/:id/participants
+// GET /api/events/:id/participants
 router.get('/:id/participants', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
   const event = db.findEvent(eventId);
@@ -44,13 +86,18 @@ router.get('/:id/participants', (req, res) => {
 // POST /api/events
 router.post('/', (req, res) => {
   const {
-    title, description, address, format, city,
-    duration, images, organizerId, organizerProfile
+    title,
+    description,
+    address,
+    format,
+    city,
+    duration,
+    images,
+    organizerId,
+    organizerProfile,
   } = req.body;
 
-  if (!organizerId) {
-    return res.status(400).json({ error: 'organizerId required' });
-  }
+  if (!organizerId) return res.status(400).json({ error: 'organizerId required' });
 
   const titleCheck = moderateContent(title);
   if (!titleCheck.isClean) return res.status(400).json({ error: titleCheck.reason });
@@ -68,26 +115,29 @@ router.post('/', (req, res) => {
     id: Date.now(),
     duration: typeof duration === 'string' ? duration.trim() : '',
     images: Array.isArray(images) ? images : [],
-    image: Array.isArray(images) && images[0]
-      ? images[0]
-      : req.body.image || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&q=80',
+    image:
+      Array.isArray(images) && images[0]
+        ? images[0]
+        : req.body.image ||
+          'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&q=80',
     participants: 1,
     city: city || 'Казань',
     organizerId: String(organizerId),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
-  // organizer как объект в событии больше не храним
   delete newEvent.organizer;
   delete newEvent.organizerProfile;
+  delete newEvent.participantIds;
 
   db.addEvent(newEvent);
 
-  // ★ Если пришёл профиль организатора — сохраняем/обновляем в db.users
   if (organizerProfile && typeof organizerProfile === 'object') {
     db.upsertUser(String(organizerId), organizerProfile);
   }
 
-  notifyUser(organizerId, `🎉 Ваше событие «${newEvent.title}» опубликовано!`);
+  if (db.isNotificationsEnabled(organizerId)) {
+    notifyUser(organizerId, `🎉 Ваше событие «${newEvent.title}» опубликовано!`);
+  }
 
   res.status(201).json(db.hydrateEvent(newEvent));
 });
@@ -101,6 +151,10 @@ router.put('/:id', (req, res) => {
 
   if (!userId || String(event.organizerId) !== String(userId)) {
     return res.status(403).json({ error: 'Редактировать может только организатор' });
+  }
+
+  if (isEventPast(event)) {
+    return res.status(400).json({ error: 'Завершённое событие нельзя редактировать' });
   }
 
   if (title) {
@@ -122,11 +176,12 @@ router.put('/:id', (req, res) => {
     duration: typeof duration === 'string' ? duration.trim() : event.duration,
     images: Array.isArray(images) ? images : event.images,
     image: Array.isArray(images) && images[0] ? images[0] : event.image,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   delete patch.organizer;
   delete patch.organizerId;
   delete patch.organizerProfile;
+  delete patch.participantIds;
 
   const updated = db.updateEvent(eventId, patch);
   res.json(db.hydrateEvent(updated));
@@ -155,19 +210,18 @@ router.post('/:id/join', (req, res) => {
   event.participants = (event.participants || 0) + 1;
   db.updateEvent(eventId, event);
 
-  // ★ Сохраняем профиль участника, если пришёл
   if (userProfile && typeof userProfile === 'object') {
     db.upsertUser(String(userId), userProfile);
   }
 
-  const eventDate = new Date(String(event.date || '').replace(',', ' '));
-  if (!Number.isNaN(eventDate.getTime())) {
-    const reminderDelay = eventDate.getTime() - Date.now() - 60 * 60 * 1000;
-    if (reminderDelay > 0) scheduleReminder(event, userId, reminderDelay);
-  }
+  scheduleEventReminder(event, userId);
 
   const organizer = db.findUser(event.organizerId);
-  if (organizer && String(organizer.id) !== String(userId)) {
+  if (
+    organizer &&
+    String(organizer.id) !== String(userId) &&
+    db.isNotificationsEnabled(organizer.id)
+  ) {
     notifyUser(organizer.id, `👥 Новый участник на «${event.title}»!`);
   }
 
@@ -186,9 +240,17 @@ router.post('/:id/leave', (req, res) => {
     return res.status(400).json({ error: 'Вы не участвуете' });
   }
 
+  // ★ Если событие ещё не завершено, пользователь отказывается — значит
+  //   он не участвовал. Удаляем и из joins, и из participated_users.
   db.removeJoin(eventId, userId);
+  if (!isEventPast(event)) {
+    db.removeParticipant(eventId, userId);
+  }
+
   event.participants = Math.max(0, (event.participants || 1) - 1);
   db.updateEvent(eventId, event);
+
+  cancelEventReminder(eventId, userId);
 
   res.json({ success: true, participants: event.participants });
 });
@@ -213,19 +275,44 @@ router.delete('/:id', (req, res) => {
 
 router.get('/:id/reviews', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
+  const event = db.findEvent(eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  // Отзывы видны только у завершённых событий, но это не ошибка
+  if (!isEventPast(event)) {
+    return res.json([]);
+  }
+
   const reviews = db.reviews.filter((r) => r.eventId === eventId);
   res.json(reviews);
 });
 
 router.post('/:id/reviews', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, userName, rating, text } = req.body;
+  const { userId, userName, rating, text, organizerRating } = req.body;
 
   if (!userId || !rating || !text) {
     return res.status(400).json({ error: 'userId, rating и text обязательны' });
   }
   if (rating < 1 || rating > 5) {
     return res.status(400).json({ error: 'Оценка от 1 до 5' });
+  }
+
+  const event = db.findEvent(eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  if (!isEventPast(event)) {
+    return res.status(403).json({ error: 'Отзыв можно оставить только после завершения события' });
+  }
+
+  if (String(event.organizerId) === String(userId)) {
+    return res.status(403).json({ error: 'Организатор не может оставить отзыв о своём событии' });
+  }
+
+  // ★ Отзыв может оставить только тот, кто записался и не отменил участие
+  //   до окончания события (см. participated_users)
+  if (!db.wasUserParticipant(eventId, userId)) {
+    return res.status(403).json({ error: 'Отзыв может оставить только участник события' });
   }
 
   const existing = db.reviews.find(
@@ -235,26 +322,32 @@ router.post('/:id/reviews', (req, res) => {
     return res.status(400).json({ error: 'Вы уже оставили отзыв' });
   }
 
+  const safeOrganizerRating =
+    Number.isInteger(organizerRating) && organizerRating >= 1 && organizerRating <= 5
+      ? organizerRating
+      : Number.isInteger(rating) && rating >= 1 && rating <= 5
+        ? rating
+        : null;
+
   const review = {
     id: Date.now(),
     eventId,
+    eventOrganizerId: event.organizerId ? String(event.organizerId) : null,
     userId,
     userName: userName || 'Гость',
     rating,
+    organizerRating: safeOrganizerRating,
     text: String(text).slice(0, 500),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 
   db.addReview(review);
 
-  const event = db.findEvent(eventId);
-  if (event) {
-    const eventReviews = db.reviews.filter((r) => r.eventId === eventId);
-    const avg = eventReviews.reduce((s, r) => s + r.rating, 0) / eventReviews.length;
-    event.rating = Math.round(avg * 10) / 10;
-    event.reviewsCount = eventReviews.length;
-    db.updateEvent(eventId, event);
-  }
+  const eventReviews = db.reviews.filter((r) => r.eventId === eventId);
+  const avg = eventReviews.reduce((s, r) => s + r.rating, 0) / eventReviews.length;
+  event.rating = Math.round(avg * 10) / 10;
+  event.reviewsCount = eventReviews.length;
+  db.updateEvent(eventId, event);
 
   res.status(201).json(review);
 });

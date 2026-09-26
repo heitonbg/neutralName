@@ -13,6 +13,7 @@ import MyEvents from './components/MyEvents';
 import Profile from './components/Profile';
 import Icon from './components/Icon';
 import CityPickerModal from './components/CityPickerModal';
+import TouristPlanModal from './components/TouristPlanModal';
 import { EventSkeletonList } from './components/EventSkeleton';
 import {
   fetchEvents,
@@ -33,6 +34,7 @@ import DeleteEventDialog from './components/DeleteEventDialog';
 import { maxBridge } from './utils/maxBridge';
 import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
+import { touristPlanStorage } from './utils/touristPlanStorage';
 import { cityStorage } from './utils/cityStorage';
 import { findCityByName, getAllCities } from './utils/citySearch';
 import {
@@ -89,6 +91,8 @@ function App() {
     return findCityByName(saved?.name) || DEFAULT_CITY;
   });
   const [isCityOpen, setIsCityOpen] = useState(false);
+  const [isTouristPlanOpen, setIsTouristPlanOpen] = useState(false);
+  const [savedPlanVersion, setSavedPlanVersion] = useState(0);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -331,7 +335,6 @@ function App() {
       'Волонтёрство',
       'Спорт',
       'Свободен сейчас',
-      'Туристический режим',
     ];
     const cats = [...new Set(events.map((e) => e.category).filter(Boolean))];
     return [...new Set([...base, ...cats])];
@@ -386,8 +389,6 @@ function App() {
       result = result.filter((e) => /спорт/i.test(e.category || ''));
     } else if (quickFilter === 'Свободен сейчас') {
       result = result.filter((e) => matchesTimeFilter(e, 'Сейчас'));
-    } else if (quickFilter === 'Туристический режим') {
-      result = result.filter((e) => matchesTimeFilter(e, 'Сегодня'));
     } else if (quickFilter) {
       result = result.filter((e) => e.category === quickFilter);
     }
@@ -421,14 +422,6 @@ function App() {
       case 'distance':
       default:
         result.sort((a, b) => a._distanceValue - b._distanceValue);
-    }
-
-    if (quickFilter === 'Туристический режим') {
-      result.sort((a, b) => {
-        const getTime = (event) =>
-          Number(String(event.date).match(/(\d{1,2}):(\d{2})/)?.[0].replace(':', '') || 0);
-        return getTime(a) - getTime(b);
-      });
     }
 
     return result;
@@ -716,6 +709,10 @@ function App() {
   };
 
   const isExploreTab = activeTab === 'feed' || activeTab === 'map';
+  const savedTouristPlan = useMemo(
+    () => touristPlanStorage.getLatest(userId),
+    [userId, savedPlanVersion]
+  );
 
   // ★ Пока userId не пришёл — показываем скелетон, а не кнопки
   const isReady = Boolean(userId);
@@ -803,6 +800,28 @@ function App() {
                   <Icon name="map" size={21} />
                 </span>{' '}
                 Карта
+              </button>
+            </div>
+
+            <div className="tourist-mode-entry">
+              <button
+                type="button"
+                className="tourist-mode-button"
+                onClick={() => {
+                  setQuickFilter(null);
+                  setIsTouristPlanOpen(true);
+                }}
+              >
+                <span className="tourist-mode-icon"><Icon name="compass" size={21} /></span>
+                <span className="tourist-mode-copy">
+                  <strong>{savedTouristPlan ? 'Мой маршрут' : 'Туристический маршрут'}</strong>
+                  <small>
+                    {savedTouristPlan
+                      ? `${savedTouristPlan.city} · ${savedTouristPlan.date}`
+                      : 'Собрать план дня из событий города'}
+                  </small>
+                </span>
+                <Icon name="chevronRight" size={20} />
               </button>
             </div>
 
@@ -1014,6 +1033,18 @@ function App() {
           initialFilters={filters}
           sortBy={sortBy}
           onSortChange={setSortBy}
+        />
+      )}
+
+      {isTouristPlanOpen && (
+        <TouristPlanModal
+          key={`${userId || 'anonymous'}:${selectedCity?.name || ''}`}
+          initialCity={selectedCity?.name || ''}
+          initialPlan={savedTouristPlan}
+          userId={userId}
+          onClose={() => setIsTouristPlanOpen(false)}
+          onEventClick={handleEventClick}
+          onSave={() => setSavedPlanVersion((version) => version + 1)}
         />
       )}
 

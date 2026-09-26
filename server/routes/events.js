@@ -184,6 +184,10 @@ router.put('/:id', (req, res) => {
   delete patch.participantIds;
 
   const updated = db.updateEvent(eventId, patch);
+  for (const participantId of db.joinedUsers.get(eventId) || []) {
+    cancelEventReminder(eventId, participantId);
+    scheduleEventReminder(updated, participantId);
+  }
   res.json(db.hydrateEvent(updated));
 });
 

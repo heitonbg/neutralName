@@ -214,10 +214,12 @@ export function startBot({ token, webAppUrl, username }) {
 }
 
 export async function notifyUser(userId, text) {
-  if (!bot) return;
+  if (!bot) return false;
   try {
     await bot.api.sendMessageToUser(userId, text, { format: 'markdown' });
+    return true;
   } catch (e) {
     console.warn('⚠️  Не удалось отправить уведомление:', e.message);
+    return false;
   }
 }

@@ -1,9 +1,13 @@
 // server/routes/events.js
 import express from 'express';
+import path from 'node:path';
+import { unlink } from 'node:fs/promises';
 import db from '../db/sqliteDatabase.js';
 import { moderateContent, validateAddress } from '../utils/moderation.js';
 import { notifyUser } from '../bot.js';
 import { scheduleEventReminder, cancelEventReminder } from '../reminders.js';
+import { uploadDir } from '../utils/uploadStorage.js';
+import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
 
 const router = express.Router();
 
@@ -260,7 +264,7 @@ router.post('/:id/leave', (req, res) => {
 });
 
 // DELETE /api/events/:id?userId=123
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const eventId = parseInt(req.params.id, 10);
   const userId = req.query.userId;
 
@@ -271,7 +275,19 @@ router.delete('/:id', (req, res) => {
     return res.status(403).json({ error: 'Только организатор может удалить событие' });
   }
 
+  const unusedUploads = collectUnusedEventUploadFilenames(event, db.events);
   db.removeEvent(eventId);
+
+  await Promise.all(unusedUploads.map(async (filename) => {
+    try {
+      await unlink(path.join(uploadDir, filename));
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error(`Не удалось удалить фото события ${eventId}:`, error.message);
+      }
+    }
+  }));
+
   res.status(204).end();
 });
 

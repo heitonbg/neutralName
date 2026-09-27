@@ -58,9 +58,7 @@ export function startBot({ token, webAppUrl, username }) {
       let openAppButton;
       try {
         openAppButton = startParam
-          ? Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername, {
-              start_param: startParam,
-            })
+          ? Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername, undefined, startParam)
           : Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
       } catch (e) {
         openAppButton = Keyboard.button.openApp('🎉 Открыть афишу событий', botUsername);
@@ -68,7 +66,7 @@ export function startBot({ token, webAppUrl, username }) {
 
       const keyboard = Keyboard.inlineKeyboard([
         [openAppButton],
-        [Keyboard.button.openApp('👤 Мои события', botUsername)],
+        [Keyboard.button.openApp('👤 Мои события', botUsername, undefined, 'my')],
       ]);
 
       await ctx.reply(text, { attachments: [keyboard] });
@@ -93,7 +91,7 @@ export function startBot({ token, webAppUrl, username }) {
     // ============================================
     bot.command('my', async (ctx) => {
       const keyboard = Keyboard.inlineKeyboard([
-        [Keyboard.button.openApp('👤 Открыть мои события', botUsername)],
+        [Keyboard.button.openApp('👤 Открыть мои события', botUsername, undefined, 'my')],
       ]);
 
       await ctx.reply('Вот твои события:', { attachments: [keyboard] });
@@ -115,7 +113,7 @@ export function startBot({ token, webAppUrl, username }) {
       let openAppButton;
       try {
         openAppButton = payload
-          ? Keyboard.button.openApp('🎉 Открыть афишу', botUsername, { start_param: payload })
+          ? Keyboard.button.openApp('🎉 Открыть афишу', botUsername, undefined, payload)
           : Keyboard.button.openApp('🎉 Открыть афишу', botUsername);
       } catch (e) {
         openAppButton = Keyboard.button.openApp('🎉 Открыть афишу', botUsername);
@@ -193,13 +191,11 @@ export function startBot({ token, webAppUrl, username }) {
       }
     });
 
-    Promise.resolve(bot.start())
-      .then(() => {
-        botStatus = 'running';
-        console.log('🤖 Бот MAX Events запущен!');
-        console.log(`   Username: @${botUsername}`);
-      })
-      .catch((error) => {
+    const polling = bot.start();
+    botStatus = 'running';
+    console.log('🤖 Бот MAX Events запущен!');
+    console.log(`   Username: @${botUsername}`);
+    Promise.resolve(polling).catch((error) => {
         botStatus = 'error';
         bot = null;
         console.error('❌ MAX-бот не запущен:', error.message);

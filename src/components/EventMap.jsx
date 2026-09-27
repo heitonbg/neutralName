@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  CircleMarker,
+  useMap,
+} from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -12,7 +19,6 @@ const markerColor = {
   Кино: 'orange', Музыка: 'violet', Прогулка: 'blue'
 };
 
-// ★ Оставлен только как fallback, если cityCoords не передан
 const DEFAULT_CENTER = [55.796, 49.108];
 
 const categorySvg = {
@@ -34,8 +40,9 @@ const EventMap = ({
   events, onJoin, onLeave, onDelete, userId, onEventClick,
   joinedIds = [], likedIds = [], onToggleLike,
   city = 'Казань',
-  cityCoords,                 // ★ координаты выбранного города [lat, lng]
-  userCoords
+  cityCoords,
+  userCoords,
+  showUserMarker = false,
 }) => {
   const [activeEvent, setActiveEvent] = useState(events[0] || null);
   const mapRef = useRef(null);
@@ -62,22 +69,59 @@ const EventMap = ({
     if (userCoords) mapRef.current.flyTo([userCoords.lat, userCoords.lng], 14, { duration: 0.8 });
   };
 
-  // ★ Центр карты: координаты выбранного города или дефолт
   const center = cityCoords || DEFAULT_CENTER;
+
+  const hasUserMarker =
+    showUserMarker &&
+    userCoords?.lat != null &&
+    userCoords?.lng != null &&
+    Number.isFinite(Number(userCoords.lat)) &&
+    Number.isFinite(Number(userCoords.lng));
 
   return (
     <div className="map-container map-screen">
-      {/* key={city} — пересоздаём карту при смене города, чтобы применился center */}
+      {/* key={city} — пересоздаём карту при смене города, чтобы применился center.
+          minZoom=3 — позволяем отдалиться до мирового масштаба.
+          worldCopyJump — карта не уезжает в пустоту при перетаскивании через 180°. */}
       <MapContainer
         key={city}
         center={center}
-        zoom={12}
+        zoom={10}
         zoomControl={false}
         scrollWheelZoom
+        minZoom={3}
+        worldCopyJump
       >
         <MapEffects onMapReady={(m) => { mapRef.current = m; }} />
-        <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <MarkerClusterGroup chunkedLoading maxClusterRadius={50}>
+        <TileLayer
+          attribution="&copy; OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {hasUserMarker && (
+          <CircleMarker
+            center={[Number(userCoords.lat), Number(userCoords.lng)]}
+            radius={9}
+            pathOptions={{
+              color: '#fff',
+              weight: 3,
+              fillColor: '#2786f8',
+              fillOpacity: 1,
+            }}
+          >
+            <Popup>Вы здесь</Popup>
+          </CircleMarker>
+        )}
+
+        {/* ★ Кластеризация с раскрытием на близких зумах.
+            disableClusteringAtZoom=13 — на 13+ показываем отдельные маркеры. */}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={80}
+          showCoverageOnHover={false}
+          spiderfyOnMaxZoom
+          disableClusteringAtZoom={13}
+        >
           {geoEvents.map((event) => (
             <Marker
               key={event.id}
@@ -88,9 +132,16 @@ const EventMap = ({
           ))}
         </MarkerClusterGroup>
       </MapContainer>
-      <button className="map-float-button compass-button" aria-label="Моё местоположение" onClick={handleLocate}>
+
+      <button
+        className="map-float-button compass-button"
+        aria-label="Моё местоположение"
+        onClick={handleLocate}
+        disabled={!userCoords}
+      >
         <Icon name="compass" size={24} />
       </button>
+
       {activeEvent && (
         <div className="map-event-preview">
           <div className="map-sheet-handle" />

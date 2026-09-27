@@ -13,6 +13,7 @@ import MyEvents from './components/MyEvents';
 import Profile from './components/Profile';
 import Icon from './components/Icon';
 import CityPickerModal from './components/CityPickerModal';
+import TouristPlanModal from './components/TouristPlanModal';
 import { EventSkeletonList } from './components/EventSkeleton';
 import {
   fetchEvents,
@@ -27,14 +28,19 @@ import {
   fetchUser,
   updateUser,
   fetchParticipants,
+  fetchTouristPlans,
+  saveTouristPlan,
 } from './api/events';
 import { isEventOwner } from './utils/eventOwnership';
 import DeleteEventDialog from './components/DeleteEventDialog';
 import { maxBridge } from './utils/maxBridge';
 import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
+import { touristPlanStorage } from './utils/touristPlanStorage';
 import { cityStorage } from './utils/cityStorage';
-import { findCityByName, getAllCities } from './utils/citySearch';
+import { findCityByName, getAllCities, findNearestCity } from './utils/citySearch';
+import { isMobileOrTablet } from './utils/device';
+import { getReferenceCoords } from './utils/geoCoords';
 import {
   matchesTimeFilter,
   isOnlineEvent,
@@ -74,7 +80,6 @@ function App() {
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
 
-  // ★ Всё приходит с сервера через /api/bootstrap
   const [joinedIds, setJoinedIds] = useState([]);
   const [participatedIds, setParticipatedIds] = useState([]);
   const [createdIds, setCreatedIds] = useState([]);
@@ -89,6 +94,8 @@ function App() {
     return findCityByName(saved?.name) || DEFAULT_CITY;
   });
   const [isCityOpen, setIsCityOpen] = useState(false);
+  const [isTouristPlanOpen, setIsTouristPlanOpen] = useState(false);
+  const [savedPlanVersion, setSavedPlanVersion] = useState(0);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -98,11 +105,14 @@ function App() {
   const [pendingActions, setPendingActions] = useState({});
   const [theme, setTheme] = useState(() => storage.getTheme());
   const [reviewsByEvent, setReviewsByEvent] = useState({});
+  const refreshSavedTouristPlan = useCallback(() => {
+    setSavedPlanVersion((version) => version + 1);
+  }, []);
 
-  // ★ userId — только реальный. Без 'guest'.
-  //   Пока MAX Bridge не отдал user, userId = null, и мы ничего не грузим.
   const userId = user?.id ? String(user.id) : null;
   const currentUserIdRef = useRef(userId);
+
+  const isMobile = useMemo(() => isMobileOrTablet(), []);
 
   const themeChangeCount = useRef(0);
   const [profile, setProfile] = useState(() => storage.getProfile(userId || 'anon'));
@@ -115,14 +125,12 @@ function App() {
     }, 3200);
   }, []);
 
-  // ★ Единая загрузка всего, что касается пользователя
   const loadBootstrap = useCallback(async (id) => {
     if (!id) return;
     try {
       const data = await fetchBootstrap(id);
       if (!data) return;
 
-      // ★ Защита от race: если за время запроса userId сменился — игнорируем
       if (String(currentUserIdRef.current) !== String(id)) return;
 
       if (Array.isArray(data.joinedIds)) {
@@ -138,6 +146,14 @@ function App() {
       if (data.user && typeof data.user === 'object') {
         setProfile((prev) => ({ ...prev, ...data.user }));
         storage.setProfile(id, { ...(storage.getProfile(id) || {}), ...data.user });
+
+        if (data.user.city) {
+          const cityFromProfile = findCityByName(data.user.city);
+          if (cityFromProfile) {
+            setSelectedCity(cityFromProfile);
+            cityStorage.set(cityFromProfile);
+          }
+        }
 
         if (typeof data.user.notificationsEnabled === 'boolean') {
           setNotificationsOn(data.user.notificationsEnabled);
@@ -208,12 +224,10 @@ function App() {
     cityStorage.set(selectedCity);
   }, [selectedCity]);
 
-  // ★ Держим актуальный userId в ref — для guard'а внутри loadBootstrap
   useEffect(() => {
     currentUserIdRef.current = userId;
   }, [userId]);
 
-  // -------- Локальный кэш профиля --------
   useEffect(() => {
     if (!userId) return;
     const cached = storage.getProfile(userId);
@@ -221,6 +235,27 @@ function App() {
       setProfile(cached);
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!userCoords) return;
+
+    const savedFromStorage = cityStorage.get();
+    const hasCityFromStorage = savedFromStorage?.name
+      ? Boolean(findCityByName(savedFromStorage.name))
+      : false;
+    const hasCityFromProfile = Boolean(
+      profile.city && findCityByName(profile.city)
+    );
+    if (hasCityFromStorage || hasCityFromProfile) return;
+
+    const nearest = findNearestCity(userCoords.lat, userCoords.lng, 150);
+    if (nearest?.city) {
+      setSelectedCity(nearest.city);
+      cityStorage.set(nearest.city);
+      pushToast(`Определили город: ${nearest.city.name}`, 'info');
+    }
+  }, [isMobile, userCoords, profile.city, pushToast]);
 
   const handleToggleTheme = (next) => {
     if (next !== 'light' && next !== 'dark') return;
@@ -245,12 +280,9 @@ function App() {
     }
   };
 
-  // -------- Старт: MAX Bridge + события --------
   useEffect(() => {
     maxBridge.init();
 
-    // ★ MAX Bridge может отдавать user асинхронно.
-    //   Ждём появления user до 3 секунд.
     let attempts = 0;
     const tryGetUser = () => {
       const u = maxBridge.getUser();
@@ -267,10 +299,14 @@ function App() {
     };
     tryGetUser();
 
-    if (navigator.geolocation) {
+    if (isMobile && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => console.log('Геолокация недоступна')
+        (pos) =>
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (error) => {
+          console.log('Геолокация недоступна', error?.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 60000, timeout: 8000 }
       );
     }
 
@@ -294,13 +330,45 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ★ Bootstrap — только для реального userId, один раз
   useEffect(() => {
     if (!userId) return;
     loadBootstrap(userId);
   }, [userId, loadBootstrap]);
 
-  // -------- Reviews для открытого события --------
+  useEffect(() => {
+    if (!userId) return undefined;
+    let active = true;
+    const syncTouristPlans = async () => {
+      const migratedPlans = touristPlanStorage.migrateAnonymous(userId);
+      if (migratedPlans.length) refreshSavedTouristPlan();
+      try {
+        const response = await fetchTouristPlans();
+        if (!active) return;
+        const remotePlans = Array.isArray(response.plans) ? response.plans : [];
+        const remoteByKey = new Map(remotePlans.map((plan) => [`${plan.city}:${plan.date}`, plan]));
+        for (const localPlan of touristPlanStorage.getAll(userId)) {
+          const planKey = `${localPlan.city}:${localPlan.date}`;
+          const remotePlan = remoteByKey.get(planKey);
+          if (remotePlan && Date.parse(remotePlan.savedAt) >= Date.parse(localPlan.savedAt)) continue;
+          try {
+            const saved = await saveTouristPlan(localPlan);
+            if (saved.plan) remoteByKey.set(planKey, saved.plan);
+          } catch (error) {
+            console.warn('Локальный туристический маршрут пока не синхронизирован', error.message);
+            break;
+          }
+        }
+        if (!active) return;
+        touristPlanStorage.mergeFromServer(userId, [...remoteByKey.values()]);
+        refreshSavedTouristPlan();
+      } catch (error) {
+        console.warn('Не удалось синхронизировать туристические маршруты', error.message);
+      }
+    };
+    syncTouristPlans();
+    return () => { active = false; };
+  }, [userId, refreshSavedTouristPlan]);
+
   useEffect(() => {
     if (!selectedEvent) return;
     const id = selectedEvent.id;
@@ -322,6 +390,11 @@ function App() {
     }
   };
 
+  const referenceCoords = useMemo(
+    () => getReferenceCoords(userCoords, selectedCity),
+    [userCoords, selectedCity]
+  );
+
   const quickFilters = useMemo(() => {
     const base = [
       'Сегодня',
@@ -331,7 +404,6 @@ function App() {
       'Волонтёрство',
       'Спорт',
       'Свободен сейчас',
-      'Туристический режим',
     ];
     const cats = [...new Set(events.map((e) => e.category).filter(Boolean))];
     return [...new Set([...base, ...cats])];
@@ -349,90 +421,112 @@ function App() {
     return count;
   }, [filters]);
 
-  const filteredEvents = useMemo(() => {
-    let result = [...events];
+  // ★ Общий пайплайн фильтрации — с флагом skipCity для карты
+  const applyCommonFilters = useCallback(
+    (list, { skipCity = false } = {}) => {
+      let result = [...list];
 
-    if (selectedCity) {
-      result = result.filter((event) => {
-        if (event.city && selectedCity.name) {
-          if (event.city === selectedCity.name) return true;
-        }
-        return eventBelongsToCity(event, selectedCity, 40);
-      });
-    }
+      // Фильтр по выбранному городу — только для ленты.
+      // Для карты (skipCity=true) оставляем все города.
+      if (!skipCity && selectedCity) {
+        result = result.filter((event) => {
+          if (event.city && selectedCity.name) {
+            if (event.city === selectedCity.name) return true;
+          }
+          return eventBelongsToCity(event, selectedCity, 40);
+        });
+      }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((e) =>
-        [e.title, e.description, e.category, e.address, e.district, e.organizer?.name]
-          .filter(Boolean)
-          .some((f) => String(f).toLowerCase().includes(q))
-      );
-    }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        result = result.filter((e) =>
+          [e.title, e.description, e.category, e.address, e.district, e.organizer?.name]
+            .filter(Boolean)
+            .some((f) => String(f).toLowerCase().includes(q))
+        );
+      }
 
-    if (quickFilter === 'Сегодня') {
-      result = result.filter((e) => matchesTimeFilter(e, 'Сегодня'));
-    } else if (quickFilter === 'Бесплатно') {
-      result = result.filter((e) => e.price === 'Бесплатно');
-    } else if (quickFilter === 'Онлайн') {
-      result = result.filter(isOnlineEvent);
-    } else if (quickFilter === 'Пушкинская карта') {
-      result = result.filter((e) => e.price === 'Пушкинская карта');
-    } else if (quickFilter === 'Волонтёрство') {
-      result = result.filter((e) =>
-        /волонт/i.test(`${e.category || ''} ${e.title || ''} ${e.description || ''}`)
-      );
-    } else if (quickFilter === 'Спорт') {
-      result = result.filter((e) => /спорт/i.test(e.category || ''));
-    } else if (quickFilter === 'Свободен сейчас') {
-      result = result.filter((e) => matchesTimeFilter(e, 'Сейчас'));
-    } else if (quickFilter === 'Туристический режим') {
-      result = result.filter((e) => matchesTimeFilter(e, 'Сегодня'));
-    } else if (quickFilter) {
-      result = result.filter((e) => e.category === quickFilter);
-    }
+      if (quickFilter === 'Сегодня') {
+        result = result.filter((e) => matchesTimeFilter(e, 'Сегодня'));
+      } else if (quickFilter === 'Бесплатно') {
+        result = result.filter((e) => e.price === 'Бесплатно');
+      } else if (quickFilter === 'Онлайн') {
+        result = result.filter(isOnlineEvent);
+      } else if (quickFilter === 'Пушкинская карта') {
+        result = result.filter((e) => e.price === 'Пушкинская карта');
+      } else if (quickFilter === 'Волонтёрство') {
+        result = result.filter((e) =>
+          /волонт/i.test(`${e.category || ''} ${e.title || ''} ${e.description || ''}`)
+        );
+      } else if (quickFilter === 'Спорт') {
+        result = result.filter((e) => /спорт/i.test(e.category || ''));
+      } else if (quickFilter === 'Свободен сейчас') {
+        result = result.filter((e) => matchesTimeFilter(e, 'Сейчас'));
+      } else if (quickFilter) {
+        result = result.filter((e) => e.category === quickFilter);
+      }
 
-    if (filters) result = result.filter((e) => matchesConfiguredFilters(e, filters, userCoords));
+      if (filters) result = result.filter((e) => matchesConfiguredFilters(e, filters, referenceCoords));
 
-    const showPast = filters?.time === 'Сейчас';
-    if (!showPast) {
-      result = result.filter((e) => getEventStatus(e) !== 'past');
-    }
+      const showPast = filters?.time === 'Сейчас';
+      if (!showPast) {
+        result = result.filter((e) => getEventStatus(e) !== 'past');
+      }
 
-    if (userCoords) {
-      result = result.map((e) => {
-        if (e.lat && e.lng) {
-          const dist = haversineDistance(userCoords.lat, userCoords.lng, e.lat, e.lng);
-          return { ...e, distance: formatDistance(dist), _distanceValue: dist };
-        }
-        return { ...e, _distanceValue: 999 };
-      });
-    } else {
-      result = result.map((e) => ({ ...e, _distanceValue: 999 }));
-    }
+      if (referenceCoords) {
+        result = result.map((e) => {
+          if (e.lat != null && e.lng != null) {
+            const dist = haversineDistance(
+              referenceCoords.lat,
+              referenceCoords.lng,
+              Number(e.lat),
+              Number(e.lng)
+            );
+            return {
+              ...e,
+              distance: formatDistance(dist),
+              _distanceValue: dist,
+              _distanceSource: referenceCoords.source,
+            };
+          }
+          return { ...e, _distanceValue: 999, _distanceSource: referenceCoords.source };
+        });
+      } else {
+        result = result.map((e) => ({ ...e, _distanceValue: 999, _distanceSource: null }));
+      }
 
+      return result;
+    },
+    [selectedCity, searchQuery, quickFilter, filters, referenceCoords]
+  );
+
+  const sortEvents = useCallback((list) => {
+    const sorted = [...list];
     switch (sortBy) {
       case 'popular':
-        result.sort((a, b) => (b.participants || 0) - (a.participants || 0));
+        sorted.sort((a, b) => (b.participants || 0) - (a.participants || 0));
         break;
       case 'new':
-        result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         break;
       case 'distance':
       default:
-        result.sort((a, b) => a._distanceValue - b._distanceValue);
+        sorted.sort((a, b) => a._distanceValue - b._distanceValue);
     }
+    return sorted;
+  }, [sortBy]);
 
-    if (quickFilter === 'Туристический режим') {
-      result.sort((a, b) => {
-        const getTime = (event) =>
-          Number(String(event.date).match(/(\d{1,2}):(\d{2})/)?.[0].replace(':', '') || 0);
-        return getTime(a) - getTime(b);
-      });
-    }
+  // ★ Лента: с фильтром по городу
+  const filteredEvents = useMemo(
+    () => sortEvents(applyCommonFilters(events)),
+    [events, applyCommonFilters, sortEvents]
+  );
 
-    return result;
-  }, [events, searchQuery, quickFilter, filters, userCoords, selectedCity, sortBy]);
+  // ★ Карта: без фильтра по городу — видны все события
+  const mapEvents = useMemo(
+    () => sortEvents(applyCommonFilters(events, { skipCity: true })),
+    [events, applyCommonFilters, sortEvents]
+  );
 
   const handleJoinEvent = async (event) => {
     if (!userId) {
@@ -661,6 +755,16 @@ function App() {
     setProfile(sanitized);
     storage.setProfile(userId, sanitized);
 
+    if (sanitized.city) {
+      const cityFromProfile = findCityByName(sanitized.city);
+      if (cityFromProfile) {
+        setSelectedCity(cityFromProfile);
+        cityStorage.set(cityFromProfile);
+        setQuickFilter(null);
+        setFilters(null);
+      }
+    }
+
     try {
       const updated = await updateUser(userId, sanitized);
 
@@ -703,6 +807,10 @@ function App() {
     setIsCityOpen(false);
     setQuickFilter(null);
     setFilters(null);
+
+    if (userId && city?.name && profile.city !== city.name) {
+      handleSaveProfile({ ...profile, city: city.name });
+    }
   };
 
   const handleAddReview = async (review) => {
@@ -716,8 +824,11 @@ function App() {
   };
 
   const isExploreTab = activeTab === 'feed' || activeTab === 'map';
+  const savedTouristPlan = useMemo(
+    () => touristPlanStorage.getLatest(userId),
+    [userId, savedPlanVersion]
+  );
 
-  // ★ Пока userId не пришёл — показываем скелетон, а не кнопки
   const isReady = Boolean(userId);
 
   return (
@@ -740,6 +851,23 @@ function App() {
                       <Icon name="chevronDown" size={14} />
                     </span>
                   </button>
+                  {referenceCoords && (
+                    <span
+                      className={`geo-source-badge ${referenceCoords.source === 'geo' ? 'geo-source-badge--me' : ''}`}
+                      title={
+                        referenceCoords.source === 'geo'
+                          ? 'Расстояния считаются от вашего текущего местоположения'
+                          : `Расстояния считаются от центра: ${selectedCity?.name || ''}`
+                      }
+                    >
+                      {referenceCoords.source === 'geo' ? '📍 от вас' : '📍 от центра'}
+                    </span>
+                  )}
+                  {activeTab === 'map' && (
+                    <span className="geo-source-badge geo-source-badge--world" title="На карте показаны события всех городов">
+                      🗺️ все города
+                    </span>
+                  )}
                 </h1>
                 <button
                   className={`header-more ${isMenuOpen ? 'active' : ''}`}
@@ -803,6 +931,28 @@ function App() {
                   <Icon name="map" size={21} />
                 </span>{' '}
                 Карта
+              </button>
+            </div>
+
+            <div className="tourist-mode-entry">
+              <button
+                type="button"
+                className="tourist-mode-button"
+                onClick={() => {
+                  setQuickFilter(null);
+                  setIsTouristPlanOpen(true);
+                }}
+              >
+                <span className="tourist-mode-icon"><Icon name="compass" size={21} /></span>
+                <span className="tourist-mode-copy">
+                  <strong>{savedTouristPlan ? 'Мой маршрут' : 'Туристический маршрут'}</strong>
+                  <small>
+                    {savedTouristPlan
+                      ? `${savedTouristPlan.city} · ${savedTouristPlan.date}`
+                      : 'Собрать план дня из событий города'}
+                  </small>
+                </span>
+                <Icon name="chevronRight" size={20} />
               </button>
             </div>
 
@@ -884,7 +1034,7 @@ function App() {
                 <EventMap
                   userId={userId}
                   onDelete={requestDelete}
-                  events={filteredEvents}
+                  events={mapEvents}
                   onJoin={handleJoinEvent}
                   onLeave={handleLeaveEvent}
                   onEventClick={handleEventClick}
@@ -894,6 +1044,7 @@ function App() {
                   city={selectedCity?.name || 'Казань'}
                   cityCoords={selectedCity ? [selectedCity.lat, selectedCity.lng] : null}
                   userCoords={userCoords}
+                  showUserMarker={Boolean(userCoords)}
                 />
               )}
 
@@ -1014,6 +1165,19 @@ function App() {
           initialFilters={filters}
           sortBy={sortBy}
           onSortChange={setSortBy}
+        />
+      )}
+
+      {isTouristPlanOpen && (
+        <TouristPlanModal
+          key={`${userId || 'anonymous'}:${selectedCity?.name || ''}`}
+          initialCity={selectedCity?.name || ''}
+          initialPlan={savedTouristPlan}
+          userId={userId}
+          userCoords={userCoords}
+          onClose={() => setIsTouristPlanOpen(false)}
+          onEventClick={handleEventClick}
+          onSave={refreshSavedTouristPlan}
         />
       )}
 

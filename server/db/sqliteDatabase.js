@@ -19,6 +19,14 @@ sql.exec(`
   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS tourist_plans (
+    user_id TEXT NOT NULL,
+    city TEXT NOT NULL,
+    date TEXT NOT NULL,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, city, date)
+  );
   CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS reviews (id TEXT PRIMARY KEY, event_id INTEGER NOT NULL, data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS joins (
@@ -71,6 +79,19 @@ const statements = {
   deleteReminder: sql.prepare('DELETE FROM reminders WHERE event_id=? AND user_id=?'),
   dueReminders: sql.prepare('SELECT event_id, user_id FROM reminders WHERE sent=0 AND send_at<=?'),
   markReminderSent: sql.prepare('UPDATE reminders SET sent=1 WHERE event_id=? AND user_id=?'),
+  touristPlans: sql.prepare('SELECT data FROM tourist_plans WHERE user_id=? ORDER BY updated_at DESC LIMIT 20'),
+  upsertTouristPlan: sql.prepare(`
+    INSERT INTO tourist_plans (user_id, city, date, data, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, city, date) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at
+  `),
+  pruneTouristPlans: sql.prepare(`
+    DELETE FROM tourist_plans
+    WHERE user_id=? AND rowid NOT IN (
+      SELECT rowid FROM tourist_plans WHERE user_id=? ORDER BY updated_at DESC LIMIT 20
+    )
+  `),
+  deleteTouristPlan: sql.prepare('DELETE FROM tourist_plans WHERE user_id=? AND city=? AND date=?'),
 };
 
 const rows = (table) =>
@@ -159,6 +180,28 @@ const db = {
   // ---------- USERS ----------
   findUser(id) {
     return this.users[String(id)] || null;
+  },
+
+  // ---------- TOURIST PLANS ----------
+  getTouristPlans(userId) {
+    return statements.touristPlans.all(String(userId)).map(({ data }) => JSON.parse(data));
+  },
+
+  saveTouristPlan(userId, plan) {
+    const savedPlan = { ...plan, savedAt: new Date().toISOString() };
+    statements.upsertTouristPlan.run(
+      String(userId),
+      savedPlan.city,
+      savedPlan.date,
+      JSON.stringify(savedPlan),
+      savedPlan.savedAt
+    );
+    statements.pruneTouristPlans.run(String(userId), String(userId));
+    return savedPlan;
+  },
+
+  deleteTouristPlan(userId, city, date) {
+    statements.deleteTouristPlan.run(String(userId), city, date);
   },
 
   isNotificationsEnabled(userId) {

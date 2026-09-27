@@ -1,6 +1,7 @@
 // src/api/events.js
 import { MOCK_EVENTS } from '../data/mockEvents.js';
 import { isEventOwner } from '../utils/eventOwnership.js';
+import { maxBridge } from '../utils/maxBridge.js';
 
 // ============================================
 // ★★★ ГЛАВНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ★★★
@@ -19,28 +20,34 @@ const mockUsers = {};
 
 // ============ API ============
 const apiFetch = async (path, options = {}) => {
+  const { timeoutMs = 12000, headers: extraHeaders = {}, ...fetchOptions } = options;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${API}${path}`, {
+      ...fetchOptions,
+      // ★ headers идут ПОСЛЕ ...fetchOptions, чтобы их не перетёрли.
+      //   Базовый Content-Type, поверх — то, что передал вызывающий
+      //   (например, Authorization для MAX).
       headers: {
         'Content-Type': 'application/json',
-        ...(options.headers || {}),
+        ...extraHeaders,
       },
-      ...options,
       signal: controller.signal,
     });
     if (!res.ok) {
       let errorMessage = `Ошибка ${res.status}`;
       try {
-        errorMessage = (await res.json()).error || errorMessage;
+        const payload = await res.json();
+        errorMessage = payload.error || errorMessage;
+        if (payload.code) errorMessage = `${errorMessage} (${payload.code})`;
       } catch {}
       throw new Error(errorMessage);
     }
     return res.status === 204 ? { success: true } : res.json();
   } catch (error) {
     if (error?.name === 'AbortError')
-      throw new Error('Сервер не ответил за 12 секунд. Попробуйте ещё раз.');
+      throw new Error(`Сервер не ответил за ${Math.round(timeoutMs / 1000)} секунд. Попробуйте ещё раз.`);
     throw error;
   } finally {
     clearTimeout(timeout);
@@ -298,6 +305,8 @@ export const uploadImages = async (files) => {
   }
   const fd = new FormData();
   files.forEach((f) => fd.append('photos', f));
+  // ★ FormData: Content-Type выставляется браузером автоматически (с boundary),
+  //   поэтому здесь нельзя руками ставить application/json.
   const res = await fetch(`${API}/api/upload`, { method: 'POST', body: fd });
   if (!res.ok) throw new Error('Не удалось загрузить фото');
   const data = await res.json();
@@ -311,6 +320,47 @@ export const checkHealth = async () => {
     return { status: 'error', message: e.message };
   }
 };
+
+export const generateTouristPlan = async (request) =>
+  apiFetch('/api/tourist/plan', {
+    method: 'POST',
+    body: JSON.stringify(request),
+    timeoutMs: 30000,
+  });
+
+export const searchTouristPlaces = async ({ eventIds, kind }) =>
+  apiFetch('/api/tourist/places', {
+    method: 'POST',
+    body: JSON.stringify({ eventIds, kind }),
+    timeoutMs: 20000,
+  });
+
+const touristPlanRequest = (path, options = {}) => {
+  const initData = maxBridge.getInitData();
+  if (!initData) throw new Error('Откройте мини-приложение в MAX, чтобы синхронизировать маршрут.');
+  return apiFetch(path, {
+    ...options,
+    headers: {
+      // ★ Явно, чтобы не полагаться на дефолт apiFetch и не потерять
+      //   Content-Type, если его кто-то перетрёт.
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+      Authorization: `tma ${initData}`,
+    },
+  });
+};
+
+export const fetchTouristPlans = () => touristPlanRequest('/api/tourist/plans');
+
+export const saveTouristPlan = (plan) => touristPlanRequest('/api/tourist/plans', {
+  method: 'PUT',
+  body: JSON.stringify({ plan }),
+});
+
+export const deleteTouristPlan = ({ city, date }) => touristPlanRequest('/api/tourist/plans', {
+  method: 'DELETE',
+  body: JSON.stringify({ city, date }),
+});
 
 export const reverseGeocode = async (lat, lng) => {
   return apiFetch(

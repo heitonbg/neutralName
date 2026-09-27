@@ -73,6 +73,187 @@ router.post('/places', async (req, res) => {
   }
 });
 
+router.post('/recommendations', async (req, res) => {
+  const apiKey = process.env.AI_API_KEY;
+  const model = process.env.AI_MODEL;
+  if (!apiKey || !model) {
+    return res.status(503).json({ error: 'AI-рекомендации мест не настроены на сервере' });
+  }
+
+  const eventIds = [...new Set(Array.isArray(req.body?.eventIds) ? req.body.eventIds : [])]
+    .slice(0, 8)
+    .map(Number)
+    .filter(Number.isSafeInteger);
+  if (!eventIds.length) return res.status(400).json({ error: 'Не выбраны события маршрута' });
+
+  const key = `${req.ip || req.socket.remoteAddress || 'unknown'}:recommendations`;
+  const now = Date.now();
+  const requests = (requestLog.get(key) || []).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+  if (requests.length >= 3) {
+    return res.status(429).json({ error: 'Слишком много запросов рекомендаций. Попробуйте позже.' });
+  }
+  requestLog.set(key, [...requests, now]);
+
+  const events = eventIds.map((id) => db.findEvent(id)).filter(Boolean);
+  if (!events.length) return res.status(404).json({ error: 'События маршрута не найдены' });
+  const kind = ['restaurants', 'attractions'].includes(req.body?.kind) ? req.body.kind : 'both';
+
+  try {
+    const candidates = await findNearbyTouristPlaces(events, kind);
+    if (!candidates.length) return res.json({ places: [] });
+
+    const response = await fetch(
+      process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.WEB_APP_URL || 'https://webtomax.vercel.app',
+          'X-OpenRouter-Title': 'MAX Events',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: 'Ты городской гид. Отвечай только JSON, не выдумывай места и факты.' },
+            {
+              role: 'user',
+              content: [
+                'Выбери до 6 наиболее уместных дополнительных мест для прогулочного маршрута.',
+                'Используй только кандидатов ниже. Для каждого верни его id и короткую причину рекомендации на русском.',
+                'Формат: {"recommendations":[{"id":"...","reason":"..."}]}.',
+                `Тип: ${kind === 'restaurants' ? 'еда' : kind === 'attractions' ? 'достопримечательности' : 'еда и достопримечательности'}.`,
+                `Маршрут: ${JSON.stringify(events.map((event) => ({ title: event.title, category: event.category, address: event.address || event.district })))}`,
+                `Реальные места OpenStreetMap: ${JSON.stringify(candidates.map(({ id, name, kindLabel, address, distanceKm, eventId }) => ({ id, name, kindLabel, address, distanceKm, eventId })))}`,
+              ].join('\n'),
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(18_000),
+      }
+    );
+    if (!response.ok) {
+      const providerError = await response.json().catch(() => null);
+      const providerMessage = String(providerError?.error?.message || '').replace(/\s+/g, ' ').slice(0, 180);
+      console.warn('AI recommendations provider rejected request:', {
+        status: response.status,
+        model,
+        message: providerMessage,
+      });
+      const message = response.status === 401 || response.status === 403
+        ? 'AI-провайдер отклонил API-ключ. Проверь AI_API_KEY на Amvera.'
+        : response.status === 402
+          ? 'У AI-провайдера закончился баланс или бесплатный лимит.'
+          : response.status === 404
+            ? 'AI-модель не найдена. Проверь AI_MODEL на Amvera.'
+            : response.status === 429
+              ? 'AI-провайдер ограничил частоту запросов. Попробуй позже.'
+              : `AI-провайдер временно недоступен (${response.status}).${providerMessage ? ` ${providerMessage}` : ''}`;
+      return res.status(502).json({ error: message });
+    }
+
+    const result = await response.json();
+    const recommendations = parseModelPlan(result.choices?.[0]?.message?.content);
+    const candidatesById = new Map(candidates.map((place) => [place.id, place]));
+    const places = [];
+    for (const item of Array.isArray(recommendations.recommendations) ? recommendations.recommendations : []) {
+      const place = candidatesById.get(String(item.id));
+      if (!place || places.some((selected) => selected.id === place.id)) continue;
+      places.push({ ...place, recommendationReason: String(item.reason || '').trim().slice(0, 180) });
+      if (places.length === 6) break;
+    }
+    res.json({ places });
+  } catch (error) {
+    console.warn('Tourist place recommendations failed:', error.message);
+    const status = error.name === 'TimeoutError' ? 504 : 502;
+    const detail = error.name === 'TimeoutError'
+      ? 'Запрос занял слишком много времени. Попробуй ещё раз.'
+      : String(error.message || '').replace(/\s+/g, ' ').slice(0, 180);
+    res.status(status).json({ error: `Не удалось получить AI-рекомендации.${detail ? ` ${detail}` : ''}` });
+  }
+});
+
+router.post('/search-places', async (req, res) => {
+  const query = String(req.body?.query || '').trim().slice(0, 120);
+  const eventIds = [...new Set(Array.isArray(req.body?.eventIds) ? req.body.eventIds : [])]
+    .slice(0, 8)
+    .map(Number)
+    .filter(Number.isSafeInteger);
+  if (query.length < 2) return res.status(400).json({ error: 'Введи хотя бы две буквы для поиска' });
+  if (!eventIds.length) return res.status(400).json({ error: 'В маршруте нет событий для определения района поиска' });
+
+  const key = `${req.ip || req.socket.remoteAddress || 'unknown'}:place-search`;
+  const now = Date.now();
+  const requests = (requestLog.get(key) || []).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+  if (requests.length >= 8) return res.status(429).json({ error: 'Слишком много поисковых запросов. Попробуй позже.' });
+  requestLog.set(key, [...requests, now]);
+
+  const events = eventIds.map((id) => db.findEvent(id)).filter(Boolean);
+  const locatedEvents = events.filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
+  if (!locatedEvents.length) return res.json({ places: [] });
+
+  const latitudes = locatedEvents.map((event) => Number(event.lat));
+  const longitudes = locatedEvents.map((event) => Number(event.lng));
+  const padding = 0.045;
+  const viewbox = [
+    Math.min(...longitudes) - padding,
+    Math.max(...latitudes) + padding,
+    Math.max(...longitudes) + padding,
+    Math.min(...latitudes) - padding,
+  ];
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', `${query}, ${events[0].city || ''}`);
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('extratags', '1');
+    url.searchParams.set('namedetails', '1');
+    url.searchParams.set('limit', '10');
+    url.searchParams.set('bounded', '1');
+    url.searchParams.set('viewbox', viewbox.join(','));
+    url.searchParams.set('accept-language', 'ru');
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'MAX-Events-Hackathon/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return res.status(502).json({ error: 'OpenStreetMap не выполнил поиск' });
+
+    const results = await response.json();
+    const places = results
+      .filter((item) => item.lat && item.lon)
+      .map((item) => {
+        const tags = item.extratags || {};
+        const kindLabel = item.type === 'hotel' || item.type === 'hostel' || tags.tourism === 'hotel'
+          ? 'Отель'
+          : item.class === 'highway'
+            ? 'Улица или пешеходный маршрут'
+            : item.class === 'tourism' || item.class === 'historic'
+              ? 'Достопримечательность'
+              : item.class === 'amenity' && /restaurant|cafe|bar|pub|fast_food/.test(item.type)
+                ? 'Ресторан или кафе'
+                : item.class === 'shop'
+                  ? 'Магазин'
+                  : 'Место';
+        return {
+          id: `nominatim-${item.osm_type}-${item.osm_id}`,
+          name: item.name || item.namedetails?.name || item.display_name?.split(',')[0] || query,
+          kind: 'custom',
+          kindLabel,
+          address: item.display_name || '',
+          lat: Number(item.lat),
+          lng: Number(item.lon),
+          durationMinutes: 45,
+          source: 'OpenStreetMap',
+        };
+      });
+    res.json({ places });
+  } catch (error) {
+    const status = error.name === 'TimeoutError' ? 504 : 502;
+    res.status(status).json({ error: 'Не удалось выполнить поиск в OpenStreetMap' });
+  }
+});
+
 router.post('/plan', async (req, res) => {
   const apiKey = process.env.AI_API_KEY;
   const model = process.env.AI_MODEL;

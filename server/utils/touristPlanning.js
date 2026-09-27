@@ -133,14 +133,26 @@ export function validateGeneratedPlan(plan, candidates) {
     if (uniqueEvents.length >= MAX_PLAN_EVENTS) break;
   }
 
-  uniqueEvents.sort((left, right) => new Date(left.startAt) - new Date(right.startAt));
+  const scheduled = normalizeRouteEvents(uniqueEvents);
+  if (!scheduled.length) throw new Error('Не удалось подобрать события без пересечения по времени');
+
+  return {
+    events: scheduled,
+  };
+}
+
+export function normalizeRouteEvents(events) {
+  const orderedEvents = [...events].sort((left, right) =>
+    getEventStart(left) - getEventStart(right)
+  );
   const scheduled = [];
   let lastEnd = -Infinity;
   let previousEvent = null;
-  for (const event of uniqueEvents) {
-    const start = new Date(event.startAt).getTime();
-    const end = start + event.durationMinutes * 60_000;
-    const sameDay = previousEvent?.date === event.date;
+  for (const event of orderedEvents) {
+    const start = getEventStart(event)?.getTime();
+    if (!Number.isFinite(start)) continue;
+    const end = start + (Number(event.durationMinutes) || getDurationMinutes(event)) * 60_000;
+    const sameDay = previousEvent && getEventDateKey(previousEvent) === getEventDateKey(event);
     const transferTime = previousEvent && sameDay
       ? estimateTransferMinutes(previousEvent, event) * 60_000
       : 0;
@@ -149,12 +161,7 @@ export function validateGeneratedPlan(plan, candidates) {
     lastEnd = end;
     previousEvent = event;
   }
-
-  if (!scheduled.length) throw new Error('Не удалось подобрать события без пересечения по времени');
-
-  return {
-    events: scheduled,
-  };
+  return scheduled;
 }
 
 export function validateGeneratedOptions(response, candidates) {

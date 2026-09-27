@@ -26,6 +26,20 @@ test('nearby OSM places are categorized and attached to the closest route event'
   assert.equal(cafe.source, 'OpenStreetMap');
 });
 
+test('nearby OSM search includes hotels, pedestrian streets, and bakeries', async () => {
+  const places = await findNearbyTouristPlaces([
+    { id: 42, lat: 56.1, lng: 50.1 },
+  ], 'both', async () => makeResponse([
+    { type: 'node', id: 101, lat: 56.1002, lon: 50.1002, tags: { name: 'Гостиница', tourism: 'hotel' } },
+    { type: 'way', id: 102, center: { lat: 56.1003, lon: 50.1003 }, tags: { name: 'Пешеходная улица', highway: 'pedestrian' } },
+    { type: 'node', id: 103, lat: 56.1004, lon: 50.1004, tags: { name: 'Пекарня', shop: 'bakery' } },
+  ]), 500);
+
+  assert.equal(places.find((place) => place.name === 'Гостиница')?.kind, 'hotel');
+  assert.equal(places.find((place) => place.name === 'Пешеходная улица')?.kind, 'street');
+  assert.equal(places.find((place) => place.name === 'Пекарня')?.kindLabel, 'Магазин или пекарня');
+});
+
 test('nearby place lookup caches the same stop and type request', async () => {
   let requests = 0;
   const fetchImpl = async () => {

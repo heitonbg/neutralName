@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildPlanCandidates,
   createPlanSummary,
+  normalizeRouteEvents,
   parseModelPlan,
   validateGeneratedOptions,
   validateGeneratedPlan,
@@ -138,6 +139,16 @@ test('generated plan rejects unknown event IDs and overlapping events', () => {
 
   assert.deepEqual(plan.events.map((event) => event.id), [1]);
   assert.equal('summary' in plan, false);
+});
+
+test('route normalization sorts events and removes conflicts in persisted plans', () => {
+  const normalized = normalizeRouteEvents([
+    { id: 2, date: '2026-09-26', startAt: new Date(2026, 8, 26, 13, 30).toISOString(), durationMinutes: 60 },
+    { id: 1, date: '2026-09-26', startAt: new Date(2026, 8, 26, 12, 0).toISOString(), durationMinutes: 180 },
+    { id: 3, date: '2026-09-26', startAt: new Date(2026, 8, 26, 16, 0).toISOString(), durationMinutes: 60 },
+  ]);
+
+  assert.deepEqual(normalized.map((event) => event.id), [1, 3]);
 });
 
 test('model JSON parser accepts a fenced response', () => {

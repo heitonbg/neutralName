@@ -2,6 +2,38 @@ import express from 'express';
 
 const router = express.Router();
 
+router.get('/address', async (req, res) => {
+  const query = String(req.query.q || '').trim().slice(0, 180);
+  if (query.length < 3) return res.json({ addresses: [] });
+
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', query);
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('limit', '5');
+    url.searchParams.set('accept-language', 'ru');
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'MAX-Events-Hackathon/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return res.status(502).json({ error: 'Не удалось найти адрес' });
+
+    const data = await response.json();
+    const addresses = data
+      .filter((item) => item.lat && item.lon)
+      .map((item) => ({
+        label: item.display_name || item.name || query,
+        lat: Number(item.lat),
+        lng: Number(item.lon),
+      }));
+    res.json({ addresses });
+  } catch (error) {
+    const status = error.name === 'TimeoutError' ? 504 : 502;
+    res.status(status).json({ error: 'Не удалось найти адрес. Можно выбрать точку на карте.' });
+  }
+});
+
 // ============================================
 // Кэш поиска городов
 // ============================================

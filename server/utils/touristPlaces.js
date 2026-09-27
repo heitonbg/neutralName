@@ -15,8 +15,16 @@ const DEFAULT_ENDPOINTS = [
 const cache = new Map();
 
 const TYPES = {
-  restaurants: ['amenity', /^(restaurant|cafe|fast_food)$/],
-  attractions: ['tourism', /^(attraction|museum|gallery|viewpoint)$/],
+  restaurants: [
+    ['amenity', /^(restaurant|cafe|fast_food|food_court|ice_cream|pub|bar)$/],
+    ['shop', /^(bakery|cheese|chocolate|coffee|deli|pastry|tea|confectionery)$/],
+    ['tourism', /^(hotel|hostel|guest_house)$/],
+  ],
+  attractions: [
+    ['tourism', /^(attraction|museum|gallery|viewpoint|artwork|theme_park|zoo|aquarium)$/],
+    ['leisure', /^(park|garden|nature_reserve)$/],
+    ['highway', /^(pedestrian|footway|path|steps)$/],
+  ],
 };
 
 export async function findNearbyTouristPlaces(events, kind = 'both', fetchImpl = fetch, now = Date.now()) {
@@ -39,8 +47,8 @@ export async function findNearbyTouristPlaces(events, kind = 'both', fetchImpl =
   if (cached && now - cached.createdAt < CACHE_TTL_MS) return cached.places;
 
   const filters = normalizedKind === 'both'
-    ? Object.values(TYPES)
-    : [TYPES[normalizedKind]];
+    ? Object.values(TYPES).flat()
+    : TYPES[normalizedKind];
   const queries = stops.flatMap((stop) => filters.map(([tag, values]) => {
     const expression = values.source;
     return `nwr(around:${SEARCH_RADIUS_METERS},${stop.lat},${stop.lng})["${tag}"~"${expression}"];`;
@@ -102,16 +110,26 @@ export async function findNearbyTouristPlaces(events, kind = 'both', fetchImpl =
     const key = String(element.id);
     if (seen.has(key)) continue;
     seen.add(key);
-    const attraction = Boolean(tags.tourism || tags.historic);
-    const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ');
+    const hotel = ['hotel', 'hostel', 'guest_house'].includes(tags.tourism);
+    const isStreet = Boolean(tags.highway);
+    const attraction = Boolean(tags.historic || tags.leisure || (tags.tourism && !hotel) || isStreet);
+    const streetAddress = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ');
     places.push({
       id: `osm-${key}`,
       name,
-      kind: attraction ? 'attraction' : 'restaurant',
-      kindLabel: attraction ? 'Достопримечательность' : 'Еда и напитки',
+      kind: hotel ? 'hotel' : isStreet ? 'street' : attraction ? 'attraction' : 'restaurant',
+      kindLabel: hotel
+        ? 'Отель'
+          : isStreet
+          ? 'Пешеходная улица или маршрут'
+          : attraction
+            ? 'Достопримечательность'
+            : tags.shop
+              ? 'Магазин или пекарня'
+              : 'Ресторан или кафе',
       lat,
       lng,
-      address: street || String(tags['addr:place'] || ''),
+      address: streetAddress || String(tags['addr:place'] || ''),
       eventId: nearest.eventId,
       distanceKm: Math.round(nearest.distanceKm * 100) / 100,
       source: 'OpenStreetMap',

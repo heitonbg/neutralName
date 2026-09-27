@@ -9,7 +9,8 @@ import { maxBridge } from '../utils/maxBridge.js';
 const USE_MOCK =
   import.meta.env?.VITE_USE_MOCK === 'true' ||
   (import.meta.env.DEV && import.meta.env?.VITE_USE_MOCK !== 'false');
-const API = import.meta.env?.VITE_API_URL || 'https://maxserver-iwrawww.amvera.io';
+const configuredApiUrl = String(import.meta.env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const API = configuredApiUrl || 'https://maxserver-iwrawww.amvera.io';
 
 // ============ МОКОВЫЕ ДАННЫЕ ============
 let mockEvents = [...MOCK_EVENTS];
@@ -334,6 +335,23 @@ export const searchTouristPlaces = async ({ eventIds, kind }) =>
     body: JSON.stringify({ eventIds, kind }),
     timeoutMs: 20000,
   });
+
+export const recommendTouristPlaces = async ({ eventIds, kind }) =>
+  apiFetch('/api/tourist/recommendations', {
+    method: 'POST',
+    body: JSON.stringify({ eventIds, kind }),
+    timeoutMs: 30000,
+  });
+
+export const searchTouristPlacesByText = async ({ eventIds, query }) =>
+  apiFetch('/api/tourist/search-places', {
+    method: 'POST',
+    body: JSON.stringify({ eventIds, query }),
+    timeoutMs: 15000,
+  });
+
+export const geocodeTouristAddress = async (query) =>
+  apiFetch(`/api/cities/address?q=${encodeURIComponent(query)}`, { timeoutMs: 10000 });
 
 const touristPlanRequest = (path, options = {}) => {
   const initData = maxBridge.getInitData();

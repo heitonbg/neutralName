@@ -97,6 +97,7 @@ function App() {
   });
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isTouristPlanOpen, setIsTouristPlanOpen] = useState(false);
+  const [touristMapRoute, setTouristMapRoute] = useState(null);
   const [savedPlanVersion, setSavedPlanVersion] = useState(0);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -427,6 +428,9 @@ function App() {
     const cats = [...new Set(events.map((e) => e.category).filter(Boolean))];
     return [...new Set([...base, ...cats])];
   }, [events]);
+  const visibleQuickFilters = activeTab === 'map'
+    ? quickFilters.filter((filter) => !['Сегодня', 'Свободен сейчас'].includes(filter))
+    : quickFilters;
 
   const activeFiltersCount = useMemo(() => {
     if (!filters) return 0;
@@ -986,7 +990,7 @@ function App() {
                 }
               }}
             >
-              {quickFilters.map((f) => (
+              {visibleQuickFilters.map((f) => (
                 <button
                   key={f}
                   className={`chip ${quickFilter === f ? 'active' : ''}`}
@@ -1059,6 +1063,8 @@ function App() {
                   events={mapEvents}
                   timeFilter={mapTimeFilter}
                   onTimeFilterChange={setMapTimeFilter}
+                  touristRoute={touristMapRoute}
+                  onCloseTouristRoute={() => setTouristMapRoute(null)}
                   onJoin={handleJoinEvent}
                   onLeave={handleLeaveEvent}
                   onLeaveRequest={requestLeave}
@@ -1203,6 +1209,11 @@ function App() {
           userCoords={userCoords}
           onClose={() => setIsTouristPlanOpen(false)}
           onEventClick={handleEventClick}
+          onShowOnMap={(route) => {
+            setTouristMapRoute(route);
+            setIsTouristPlanOpen(false);
+            setActiveTab('map');
+          }}
           onSave={refreshSavedTouristPlan}
         />
       )}

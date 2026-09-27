@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import TouristRouteMap from './TouristRouteMap';
-import { generateTouristPlan, saveTouristPlan, searchTouristPlaces } from '../api/events';
+import {
+  generateTouristPlan,
+  saveTouristPlan,
+  recommendTouristPlaces,
+  searchTouristPlacesByText,
+  geocodeTouristAddress,
+  reverseGeocode,
+} from '../api/events';
 import { touristPlanStorage } from '../utils/touristPlanStorage';
 import { findCityByName } from '../utils/citySearch';
-import { buildTouristMapLinks, getTouristRouteStops } from '../utils/touristMapLinks';
+import { buildTouristMapLinks, getTouristRouteStops, getTouristStopKey, isTouristPlace, normalizeTouristOption } from '../utils/touristMapLinks';
+import { getTouristRouteSchedule } from '../utils/touristRouteSchedule';
 
 const INTERESTS = ['Культура', 'Спорт', 'Кино', 'Прогулка', 'Музыка', 'Настольные игры'];
 
@@ -58,8 +66,41 @@ const formatOptionsCount = (count) => {
   return `${count} ${noun} поездки`;
 };
 
+const mergeSavedRoute = (localPlan, serverPlan) => ({
+  ...localPlan,
+  ...serverPlan,
+  options: (serverPlan.options || []).map((serverOption, index) => {
+    const localOption = localPlan.options.find((option) => option.id === serverOption.id)
+      || localPlan.options[index];
+    const localPlaces = new Map((localOption?.places || []).map((place) => [place.id, place]));
+    const customStops = new Map((localOption?.customStops || []).map((stop) => [stop.id, stop]));
+    for (const stop of serverOption.customStops || []) {
+      customStops.set(stop.id, { ...customStops.get(stop.id), ...stop });
+    }
+    return {
+      ...localOption,
+      ...serverOption,
+      places: (serverOption.places || localOption?.places || []).map((place) => ({
+        ...localPlaces.get(place.id),
+        ...place,
+        kind: localPlaces.get(place.id)?.kind || place.kind,
+        kindLabel: localPlaces.get(place.id)?.kindLabel || place.kindLabel,
+        recommendationReason: localPlaces.get(place.id)?.recommendationReason || place.recommendationReason,
+        durationMinutes: place.durationMinutes ?? localPlaces.get(place.id)?.durationMinutes ?? 45,
+      })),
+      customStops: [...customStops.values()],
+      stopOrder: localOption?.stopOrder?.length ? localOption.stopOrder : serverOption.stopOrder || [],
+      removedOverlappingEventCount: Math.max(
+        Number(serverOption.removedOverlappingEventCount) || 0,
+        Number(localOption?.removedOverlappingEventCount) || 0
+      ),
+    };
+  }),
+});
+
 const createTouristPlan = (initialPlan) => {
   if (Array.isArray(initialPlan?.options)) {
+    const options = initialPlan.options.map(normalizeTouristOption);
     return {
       days: initialPlan.days || 1,
       interests: initialPlan.interests || [],
@@ -67,10 +108,16 @@ const createTouristPlan = (initialPlan) => {
       maxDistanceKm: initialPlan.maxDistanceKm ?? 5,
       query: initialPlan.query || '',
       ...initialPlan,
-      selectedOptionId: initialPlan.selectedOptionId || initialPlan.options[0]?.id,
+      options,
+      selectedOptionId: initialPlan.selectedOptionId || options[0]?.id,
     };
   }
   if (Array.isArray(initialPlan?.events) && initialPlan.events.length) {
+    const savedOption = normalizeTouristOption({
+      id: 'saved-route',
+      title: 'Сохранённый маршрут',
+      events: initialPlan.events,
+    });
     return {
       days: 1,
       interests: [],
@@ -78,7 +125,7 @@ const createTouristPlan = (initialPlan) => {
       maxDistanceKm: 5,
       query: '',
       ...initialPlan,
-      options: [{ id: 'saved-route', title: 'Сохранённый маршрут', events: initialPlan.events }],
+      options: [savedOption],
       selectedOptionId: 'saved-route',
     };
   }
@@ -92,6 +139,7 @@ const TouristPlanModal = ({
   userCoords,
   onClose,
   onEventClick,
+  onShowOnMap,
   onSave,
 }) => {
   const [city, setCity] = useState(initialPlan?.city || initialCity || '');
@@ -113,11 +161,26 @@ const TouristPlanModal = ({
     initialPlan?.storage === 'server' ? 'synced' : initialPlan?.savedAt ? 'device' : 'draft'
   );
   const [offlinePinned, setOfflinePinned] = useState(Boolean(initialPlan?.offlinePinned));
-  const [planDirty, setPlanDirty] = useState(false);
+  const [planDirty, setPlanDirty] = useState(() =>
+    Boolean(createTouristPlan(initialPlan)?.options.some((option) => option.removedOverlappingEventCount))
+  );
   const [placesKind, setPlacesKind] = useState('both');
   const [placeSuggestions, setPlaceSuggestions] = useState([]);
   const [placesError, setPlacesError] = useState('');
+  const [placeSearchQuery, setPlaceSearchQuery] = useState('');
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
+  const [textPlaceSuggestions, setTextPlaceSuggestions] = useState([]);
+  const [placeSearchError, setPlaceSearchError] = useState('');
+  const [manualStopName, setManualStopName] = useState('');
+  const [manualDuration, setManualDuration] = useState(45);
+  const [manualAddress, setManualAddress] = useState('');
+  const [manualPoint, setManualPoint] = useState(null);
+  const [manualAddressResults, setManualAddressResults] = useState([]);
+  const [manualAddressLoading, setManualAddressLoading] = useState(false);
+  const [manualMapOpen, setManualMapOpen] = useState(false);
+  const [manualStopError, setManualStopError] = useState('');
   const [error, setError] = useState('');
+  const [draggedStopKey, setDraggedStopKey] = useState(null);
   const revisionRef = useRef(0);
   const savingRef = useRef(false);
   const saveTimerRef = useRef(null);
@@ -136,6 +199,7 @@ const TouristPlanModal = ({
     setMaxDistanceKm(restoredPlan.maxDistanceKm === undefined ? 5 : restoredPlan.maxDistanceKm);
     setQuery(restoredPlan.query || '');
     setPlan(restoredPlan);
+    setPlanDirty(Boolean(restoredPlan.options.some((option) => option.removedOverlappingEventCount)));
     setIsReplanning(false);
     setSaveStatus(restoredPlan.storage === 'server' ? 'synced' : restoredPlan.savedAt ? 'device' : 'draft');
     setOfflinePinned(Boolean(restoredPlan.offlinePinned));
@@ -246,15 +310,29 @@ const TouristPlanModal = ({
         const response = await saveTouristPlan(snapshot);
         if (revisionRef.current === revision) {
           const synced = {
-            ...response.plan,
+            ...mergeSavedRoute(snapshot, response.plan),
             storage: 'server',
             offlinePinned,
           };
+          const serverLostCustomStops = snapshot.options.some((option, index) =>
+            (option.customStops || []).length > 0 &&
+            !(response.plan.options?.find((saved) => saved.id === option.id)?.customStops || response.plan.options?.[index]?.customStops || []).length
+          );
+          if (serverLostCustomStops) {
+            synced.storage = 'device';
+            synced.savedAt = new Date(Math.max(
+              Date.now(),
+              Date.parse(response.plan.savedAt) || 0
+            ) + 1000).toISOString();
+          }
           touristPlanStorage.save(userId, synced);
           setPlan(synced);
           setPlanDirty(false);
-          setSaveStatus('synced');
-          onSave?.(response.plan);
+          setSaveStatus(serverLostCustomStops ? 'device' : 'synced');
+          if (serverLostCustomStops) {
+            setError('Сервер сохранил маршрут без ручных остановок. Обновите backend Amvera; остановки пока оставлены на устройстве.');
+          }
+          onSave?.(synced);
         }
       } catch (requestError) {
         if (revisionRef.current === revision) {
@@ -288,8 +366,34 @@ const TouristPlanModal = ({
     setPlan((current) => ({
       ...current,
       options: current.options.map((option) => option.id === current.selectedOptionId
-        ? { ...option, events: option.events.filter((event) => event.id !== eventId) }
+        ? (() => {
+          const nextOption = {
+            ...option,
+            events: option.events.filter((event) => event.id !== eventId),
+            places: (option.places || []).filter((place) => String(place.eventId) !== String(eventId)),
+          };
+          return {
+            ...nextOption,
+            stopOrder: getTouristRouteStops(nextOption).map(getTouristStopKey),
+          };
+        })()
         : option),
+      savedAt: null,
+    }));
+    markPlanDirty();
+  };
+
+  const handleRemoveCustomStop = (stopId) => {
+    setPlan((current) => ({
+      ...current,
+      options: current.options.map((option) => {
+        if (option.id !== current.selectedOptionId) return option;
+        const nextOption = {
+          ...option,
+          customStops: (option.customStops || []).filter((stop) => stop.id !== stopId),
+        };
+        return { ...nextOption, stopOrder: getTouristRouteStops(nextOption).map(getTouristStopKey) };
+      }),
       savedAt: null,
     }));
     markPlanDirty();
@@ -312,14 +416,89 @@ const TouristPlanModal = ({
     setPlacesLoading(true);
     setPlacesError('');
     try {
-      const result = await searchTouristPlaces({ eventIds, kind: placesKind });
+      const result = await recommendTouristPlaces({ eventIds, kind: placesKind });
       setPlaceSuggestions(result.places || []);
       if (!result.places?.length) setPlacesError('Рядом с событиями не нашлось подходящих мест.');
     } catch (requestError) {
-      setPlacesError(requestError.message || 'Не удалось загрузить места поблизости.');
+      setPlacesError(/404|not found/i.test(requestError.message)
+        ? 'Этот endpoint отсутствует на текущем backend. Переключи VITE_API_URL на новый Amvera API и задеплой server.'
+        : requestError.message || 'Не удалось загрузить места поблизости.');
     } finally {
       setPlacesLoading(false);
     }
+  };
+
+  const searchPlacesByText = async (event) => {
+    event.preventDefault();
+    if (!placeSearchQuery.trim() || !selectedOption?.events.length) return;
+    setPlaceSearchLoading(true);
+    setPlaceSearchError('');
+    try {
+      const result = await searchTouristPlacesByText({
+        eventIds: selectedOption.events.map((item) => item.id),
+        query: placeSearchQuery.trim(),
+      });
+      setTextPlaceSuggestions(result.places || []);
+      if (!result.places?.length) setPlaceSearchError('Рядом с маршрутом ничего не найдено. Попробуй другое название.');
+    } catch (requestError) {
+      setPlaceSearchError(/404|not found/i.test(requestError.message)
+        ? 'Текстовый поиск ещё не развернут на backend. Проверь VITE_API_URL и обнови server на Amvera.'
+        : requestError.message || 'Не удалось выполнить поиск. Обнови backend Amvera.');
+    } finally {
+      setPlaceSearchLoading(false);
+    }
+  };
+
+  const searchManualAddress = async (event) => {
+    event.preventDefault();
+    if (manualAddress.trim().length < 3) return;
+    setManualAddressLoading(true);
+    setManualStopError('');
+    try {
+      const result = await geocodeTouristAddress(manualAddress.trim());
+      setManualAddressResults(result.addresses || []);
+      if (!result.addresses?.length) setManualStopError('Адрес не найден. Можно поставить точку на карте.');
+    } catch (requestError) {
+      setManualStopError(/404|not found/i.test(requestError.message)
+        ? 'Поиск адреса ещё не развернут на backend. Можно выбрать точку на карте.'
+        : requestError.message || 'Не удалось найти адрес. Можно выбрать точку на карте.');
+    } finally {
+      setManualAddressLoading(false);
+    }
+  };
+
+  const selectManualPoint = async (point) => {
+    setManualPoint(point);
+    setManualStopError('');
+    try {
+      const location = await reverseGeocode(point.lat, point.lng);
+      const address = [location.street, location.district, location.city].filter(Boolean).join(', ');
+      if (address) setManualAddress(address);
+    } catch {
+      // Coordinates are still enough to add the stop.
+    }
+  };
+
+  const submitManualStop = (event) => {
+    event.preventDefault();
+    if (!manualStopName.trim() || !manualPoint) {
+      setManualStopError('Укажи название и выбери адрес или точку на карте.');
+      return;
+    }
+    addCustomStop({
+      name: manualStopName.trim(),
+      address: manualAddress.trim(),
+      lat: Number(manualPoint.lat),
+      lng: Number(manualPoint.lng),
+      durationMinutes: manualDuration,
+    });
+    setManualStopName('');
+    setManualDuration(45);
+    setManualAddress('');
+    setManualPoint(null);
+    setManualAddressResults([]);
+    setManualStopError('');
+    setManualMapOpen(false);
   };
 
   const togglePlace = (place) => {
@@ -329,10 +508,36 @@ const TouristPlanModal = ({
         if (option.id !== current.selectedOptionId) return option;
         const selected = option.places || [];
         const exists = selected.some((item) => item.id === place.id);
-        return {
+        const nextPlaces = exists
+          ? selected.filter((item) => item.id !== place.id)
+          : [...selected, {
+            ...place,
+            durationMinutes: place.durationMinutes || (['restaurant', 'hotel', 'shop'].includes(place.kind) ? 45 : 60),
+          }];
+        const nextOption = {
           ...option,
-          places: exists ? selected.filter((item) => item.id !== place.id) : [...selected, place],
+          places: nextPlaces,
         };
+        const nextStops = getTouristRouteStops(nextOption);
+        if (!exists) {
+          const placeIndex = nextStops.findIndex((stop) => getTouristStopKey(stop) === getTouristStopKey(place));
+          const reorderedStops = [...nextStops];
+          const [addedStop] = reorderedStops.splice(placeIndex, 1);
+          const eventIndex = reorderedStops.findIndex((stop) =>
+            !isTouristPlace(stop) && String(stop.id) === String(place.eventId)
+          );
+          let insertionIndex = eventIndex < 0 ? reorderedStops.length : eventIndex + 1;
+          while (
+            insertionIndex < reorderedStops.length &&
+            isTouristPlace(reorderedStops[insertionIndex]) &&
+            String(reorderedStops[insertionIndex].eventId) === String(place.eventId)
+          ) insertionIndex += 1;
+          reorderedStops.splice(insertionIndex, 0, addedStop);
+          nextOption.stopOrder = reorderedStops.map(getTouristStopKey);
+        } else {
+          nextOption.stopOrder = nextStops.map(getTouristStopKey);
+        }
+        return nextOption;
       }),
       savedAt: null,
     }));
@@ -340,10 +545,81 @@ const TouristPlanModal = ({
   };
 
   const routeStops = selectedOption ? getTouristRouteStops(selectedOption) : [];
+  const routeSchedule = getTouristRouteSchedule(routeStops, { defaultDate: plan?.date });
+  const mapCity = findCityByName(plan?.city || city);
+  const mapInitialCenter = mapCity ? [mapCity.lat, mapCity.lng] : [55.796, 49.108];
   const mapLinks = buildTouristMapLinks(routeStops, {
     userCoords: hasUserCoords ? userCoords : null,
     mode: 'auto',
   });
+
+  const reorderStop = (fromKey, toKey) => {
+    if (!(fromKey?.startsWith('place:') || fromKey?.startsWith('custom:')) || !toKey || fromKey === toKey) return;
+    const nextStops = [...routeStops];
+    const fromIndex = nextStops.findIndex((stop) => getTouristStopKey(stop) === fromKey);
+    const toIndex = nextStops.findIndex((stop) => getTouristStopKey(stop) === toKey);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const [movedStop] = nextStops.splice(fromIndex, 1);
+    nextStops.splice(toIndex, 0, movedStop);
+    const stopOrder = nextStops.map(getTouristStopKey);
+    setPlan((current) => ({
+      ...current,
+      options: current.options.map((option) => option.id === current.selectedOptionId
+        ? { ...option, stopOrder, savedAt: null }
+        : option),
+    }));
+    markPlanDirty();
+  };
+
+  const moveStop = (index, direction) => {
+    const target = Math.max(0, Math.min(routeStops.length - 1, index + direction));
+    if (target !== index) reorderStop(getTouristStopKey(routeStops[index]), getTouristStopKey(routeStops[target]));
+  };
+
+  const addCustomStop = (stop) => {
+    const customStop = {
+      ...stop,
+      id: stop.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'custom',
+      kindLabel: stop.kindLabel || 'Моя остановка',
+      durationMinutes: Number(stop.durationMinutes) || 45,
+      source: stop.source || 'manual',
+    };
+    setPlan((current) => ({
+      ...current,
+      options: current.options.map((option) => {
+        if (option.id !== current.selectedOptionId) return option;
+        const nextOption = { ...option, customStops: [...(option.customStops || []), customStop] };
+        return { ...nextOption, stopOrder: getTouristRouteStops(nextOption).map(getTouristStopKey) };
+      }),
+      savedAt: null,
+    }));
+    markPlanDirty();
+  };
+
+  const updatePlaceDuration = (placeId, durationMinutes) => {
+    setPlan((current) => ({
+      ...current,
+      options: current.options.map((option) => option.id === current.selectedOptionId
+        ? {
+          ...option,
+          places: (option.places || []).map((place) => place.id === placeId
+            ? { ...place, durationMinutes: Number(durationMinutes) }
+            : place),
+          customStops: (option.customStops || []).map((stop) => stop.id === placeId
+            ? { ...stop, durationMinutes: Number(durationMinutes) }
+            : stop),
+          savedAt: null,
+        }
+        : option),
+    }));
+    markPlanDirty();
+  };
+
+  const formatWindowTime = (date) => new Intl.DateTimeFormat('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 
   return (
     <div className="modal-overlay tourist-plan-overlay" onClick={onClose}>
@@ -527,64 +803,130 @@ const TouristPlanModal = ({
             {selectedOption && (
               <>
                 <p className="tourist-plan-summary">{formatPlanSummary(selectedOption.events)}</p>
+                {selectedOption.removedOverlappingEventCount > 0 && (
+                  <p className="tourist-plan-overlap-warning" role="status">
+                    Из маршрута исключено событий с пересечением по времени: {selectedOption.removedOverlappingEventCount}. Обновите варианты, чтобы найти замену.
+                  </p>
+                )}
+                <p className="tourist-route-timing-note">
+                  Время остановок расчётное; время в пути между точками не учитывается.
+                </p>
                 <ol className="tourist-plan-timeline">
-                  {selectedOption.events.map((event) => (
-                    <React.Fragment key={event.id}>
-                      <li>
-                        <span className="tourist-plan-time">
-                          {formatTime(event)}
-                          {Number(days) > 1 && <small>{formatDay(event)}</small>}
+                  {routeStops.map((stop, index) => {
+                    const isPlace = isTouristPlace(stop);
+                    const stopKey = getTouristStopKey(stop);
+                    const schedule = routeSchedule[index];
+                    const hasConflict = schedule.overlapsPrevious || schedule.overlapsNext;
+                    return (
+                      <li
+                        key={stopKey}
+                        className={`tourist-plan-stop ${isPlace ? 'tourist-plan-place-stop' : ''} ${draggedStopKey === stopKey ? 'is-dragging' : ''}`}
+                        draggable={isPlace && routeStops.length > 1}
+                        onDragStart={(event) => {
+                          if (!isPlace) return;
+                          setDraggedStopKey(stopKey);
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', stopKey);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          reorderStop(event.dataTransfer.getData('text/plain') || draggedStopKey, stopKey);
+                          setDraggedStopKey(null);
+                        }}
+                        onDragEnd={() => setDraggedStopKey(null)}
+                      >
+                        <span className={`tourist-plan-time-window ${hasConflict ? 'has-conflict' : ''}`}>
+                          <strong>{formatWindowTime(schedule.start)} - {formatWindowTime(schedule.end)}</strong>
+                          <small>
+                            {isPlace
+                              ? `Остановка · ${schedule.durationMinutes} мин`
+                              : Number(days) > 1 ? formatDay(stop) : 'Событие'}
+                          </small>
+                          {hasConflict && <small className="tourist-plan-time-conflict">Накладка по времени</small>}
                         </span>
-                        <button
-                          type="button"
-                          className="tourist-plan-event"
-                          onClick={() => {
-                            onClose();
-                            onEventClick(event);
-                          }}
-                        >
-                          <span className="tourist-plan-event-category">{event.category}</span>
-                          <strong>{event.title}</strong>
-                          <span>{event.address || event.district || 'Адрес уточняется'}</span>
-                          <span className="tourist-plan-event-meta">
-                            {event.price || 'Стоимость уточняется'}
-                            {event.maxParticipants
-                              ? ` · ${event.participants}/${event.maxParticipants} мест`
-                              : ''}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="tourist-plan-remove"
-                          aria-label={`Убрать «${event.title}» из маршрута`}
-                          title="Убрать из маршрута"
-                          onClick={() => handleRemoveEvent(event.id)}
-                        >
-                          <Icon name="close" size={17} />
-                        </button>
-                      </li>
-                      {(selectedOption.places || [])
-                        .filter((place) => String(place.eventId) === String(event.id))
-                        .map((place) => (
-                          <li className="tourist-plan-place-stop" key={place.id}>
-                            <span className="tourist-plan-time"><Icon name="pin" size={15} /></span>
-                            <span className="tourist-plan-place-description">
-                              <small>{place.kindLabel} · OSM</small>
-                              <strong>{place.name}</strong>
-                              <span>{place.address || `Рядом: ${event.title}`}</span>
+                        {isPlace ? (
+                          <div className="tourist-plan-place-description">
+                            <small>{stop.kindLabel} · {stop.source === 'manual' ? 'Вручную' : 'OpenStreetMap'}</small>
+                            <strong>{stop.name}</strong>
+                            <span>{stop.address || `Рядом: ${selectedOption.events.find((event) => String(event.id) === String(stop.eventId))?.title || 'событие'}`}</span>
+                            <label className="tourist-place-duration">
+                              Длительность
+                              <select
+                                value={schedule.durationMinutes}
+                                aria-label={`Длительность остановки «${stop.name}»`}
+                                onChange={(event) => updatePlaceDuration(stop.id, event.target.value)}
+                              >
+                                {[30, 45, 60, 90, 120].map((minutes) => (
+                                  <option key={minutes} value={minutes}>{minutes} мин</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="tourist-plan-event"
+                            onClick={() => {
+                              onClose();
+                              onEventClick(stop);
+                            }}
+                          >
+                            <span className="tourist-plan-event-category">{stop.category}</span>
+                            <strong>{stop.title}</strong>
+                            <span>{stop.address || stop.district || 'Адрес уточняется'}</span>
+                            <span className="tourist-plan-event-meta">
+                              {stop.price || 'Стоимость уточняется'}
+                              {stop.maxParticipants
+                                ? ` · ${stop.participants}/${stop.maxParticipants} мест`
+                                : ''}
                             </span>
-                            <button
-                              type="button"
-                              className="tourist-plan-remove"
-                              aria-label={`Убрать «${place.name}» из маршрута`}
-                              onClick={() => togglePlace(place)}
-                            >
-                              <Icon name="close" size={17} />
-                            </button>
-                          </li>
-                        ))}
-                    </React.Fragment>
-                  ))}
+                          </button>
+                        )}
+                        <div className="tourist-plan-stop-controls">
+                          {isPlace && (
+                            <span className="tourist-plan-drag-handle" title="Перетащить остановку" aria-hidden="true">
+                              <Icon name="move" size={16} />
+                            </span>
+                          )}
+                          {isPlace && <button
+                            type="button"
+                            className="tourist-plan-move"
+                            aria-label={`Переместить ${isPlace ? stop.name : stop.title} выше`}
+                            title="Переместить выше"
+                            disabled={index === 0}
+                            onClick={() => moveStop(index, -1)}
+                          >
+                            <Icon name="chevronUp" size={16} />
+                          </button>}
+                          {isPlace && <button
+                            type="button"
+                            className="tourist-plan-move"
+                            aria-label={`Переместить ${isPlace ? stop.name : stop.title} ниже`}
+                            title="Переместить ниже"
+                            disabled={index === routeStops.length - 1}
+                            onClick={() => moveStop(index, 1)}
+                          >
+                            <Icon name="chevronDown" size={16} />
+                          </button>}
+                          <button
+                            type="button"
+                            className="tourist-plan-remove"
+                            aria-label={`Убрать «${isPlace ? stop.name : stop.title}» из маршрута`}
+                            title="Убрать из маршрута"
+                            onClick={() => stop.kind === 'custom'
+                              ? handleRemoveCustomStop(stop.id)
+                              : isPlace ? togglePlace(stop) : handleRemoveEvent(stop.id)}
+                          >
+                            <Icon name="close" size={17} />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ol>
                 <section className="tourist-place-picker">
                   <div className="tourist-place-picker-heading">
@@ -597,9 +939,9 @@ const TouristPlanModal = ({
                   <div className="tourist-place-actions">
                     <div className="tourist-place-kind" role="group" aria-label="Тип мест">
                       {[
-                        { id: 'both', label: 'Все' },
-                        { id: 'restaurants', label: 'Еда' },
-                        { id: 'attractions', label: 'Места' },
+                        { id: 'restaurants', label: 'Поесть' },
+                        { id: 'attractions', label: 'Достопримечательности' },
+                        { id: 'both', label: 'Любые идеи' },
                       ].map((kind) => (
                         <button
                           key={kind.id}
@@ -618,11 +960,51 @@ const TouristPlanModal = ({
                       disabled={placesLoading || !selectedOption.events.some((event) => event.lat != null && event.lng != null)}
                       onClick={findPlaces}
                     >
-                      {placesLoading ? 'Ищем…' : 'Найти рядом'}
+                      {placesLoading ? 'Подбираем…' : 'Подобрать с ИИ'}
                     </button>
                   </div>
-                  <p className="tourist-place-attribution">Данные OpenStreetMap. Часы работы и актуальность уточняйте на месте.</p>
+                  <p className="tourist-place-attribution">ИИ выбирает из реально найденных мест OpenStreetMap. Проверяй часы работы перед визитом.</p>
                   {placesError && <p className="tourist-plan-stale" role="status">{placesError}</p>}
+                  <form className="tourist-place-text-search" onSubmit={searchPlacesByText}>
+                    <label htmlFor="tourist-place-query">Искать конкретное место или улицу</label>
+                    <div>
+                      <input
+                        id="tourist-place-query"
+                        value={placeSearchQuery}
+                        onChange={(event) => setPlaceSearchQuery(event.target.value)}
+                        placeholder="Например, набережная, отель, кофейня"
+                      />
+                      <button type="submit" disabled={placeSearchLoading || !placeSearchQuery.trim()}>
+                        {placeSearchLoading ? 'Поиск…' : 'Найти'}
+                      </button>
+                    </div>
+                  </form>
+                  {placeSearchError && <p className="tourist-plan-stale" role="status">{placeSearchError}</p>}
+                  {textPlaceSuggestions.length > 0 && (
+                    <ul className="tourist-place-results">
+                      {textPlaceSuggestions.map((place) => {
+                        const isAdded = (selectedOption.customStops || []).some((item) => item.id === place.id);
+                        return (
+                          <li key={place.id}>
+                            <span>
+                              <strong>{place.name}</strong>
+                              <small>{place.kindLabel} · OpenStreetMap</small>
+                              <small>{place.address}</small>
+                            </span>
+                            <button
+                              type="button"
+                              className={isAdded ? 'active' : ''}
+                              aria-pressed={isAdded}
+                              onClick={() => addCustomStop(place)}
+                              disabled={isAdded}
+                            >
+                              {isAdded ? 'Добавлено' : 'Добавить'}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                   {placeSuggestions.length > 0 && (
                     <ul className="tourist-place-results">
                       {placeSuggestions.map((place) => {
@@ -632,6 +1014,7 @@ const TouristPlanModal = ({
                             <span>
                               <strong>{place.name}</strong>
                               <small>{place.kindLabel} · {place.distanceKm} км</small>
+                              {place.recommendationReason && <small>{place.recommendationReason}</small>}
                             </span>
                             <button
                               type="button"
@@ -646,9 +1029,95 @@ const TouristPlanModal = ({
                       })}
                     </ul>
                   )}
+                  <form className="tourist-manual-stop-form" onSubmit={submitManualStop}>
+                    <h4>Своя остановка</h4>
+                    <label>
+                      Название
+                      <input
+                        required
+                        maxLength={120}
+                        value={manualStopName}
+                        onChange={(event) => setManualStopName(event.target.value)}
+                        placeholder="Например, встреча с друзьями"
+                      />
+                    </label>
+                    <label>
+                      Адрес
+                      <span className="tourist-manual-address-row">
+                        <input
+                          maxLength={180}
+                          value={manualAddress}
+                          onChange={(event) => {
+                            setManualAddress(event.target.value);
+                            setManualPoint(null);
+                            setManualAddressResults([]);
+                          }}
+                          placeholder="Улица, дом или место"
+                        />
+                        <button type="button" disabled={manualAddressLoading || manualAddress.trim().length < 3} onClick={searchManualAddress}>
+                          {manualAddressLoading ? 'Ищем…' : 'Найти'}
+                        </button>
+                      </span>
+                    </label>
+                    {manualAddressResults.length > 0 && (
+                      <ul className="tourist-manual-address-results">
+                        {manualAddressResults.map((address, index) => (
+                          <li key={`${address.lat}:${address.lng}:${index}`}>
+                            <button type="button" onClick={() => {
+                              setManualPoint({ lat: address.lat, lng: address.lng });
+                              setManualAddress(address.label);
+                              setManualAddressResults([]);
+                            }}>
+                              {address.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="tourist-manual-stop-actions">
+                      <button type="button" className="tourist-manual-map-toggle" onClick={() => setManualMapOpen((open) => !open)}>
+                        <Icon name="pin" size={16} />
+                        {manualMapOpen ? 'Скрыть карту' : 'Выбрать точку на карте'}
+                      </button>
+                      <label className="tourist-place-duration">
+                        Плановое время
+                        <select aria-label="Плановая длительность ручной остановки" value={manualDuration} onChange={(event) => setManualDuration(Number(event.target.value))}>
+                          {[30, 45, 60, 90, 120].map((minutes) => (
+                            <option key={minutes} value={minutes}>{minutes} мин</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    {manualMapOpen && (
+                      <>
+                        <p className="tourist-plan-privacy">Нажми на карту, чтобы поставить точку остановки.</p>
+                        <TouristRouteMap
+                          stops={routeStops}
+                          interactive
+                          initialCenter={mapInitialCenter}
+                          selectedPoint={manualPoint}
+                          onPointSelect={selectManualPoint}
+                        />
+                      </>
+                    )}
+                    {manualPoint && <p className="tourist-manual-point-status" role="status">Точка выбрана</p>}
+                    {manualStopError && <p className="tourist-plan-stale" role="alert">{manualStopError}</p>}
+                    <button type="submit" className="tourist-manual-stop-submit" disabled={!manualStopName.trim() || !manualPoint}>
+                      <Icon name="plus" size={17} />
+                      Добавить остановку
+                    </button>
+                  </form>
                 </section>
                 {mapLinks && (
                   <>
+                    <button
+                      type="button"
+                      className="tourist-show-on-map"
+                      onClick={() => onShowOnMap?.({ ...plan, selectedOptionId: selectedOption.id })}
+                    >
+                      <Icon name="map" size={18} />
+                      Показать на карте
+                    </button>
                     <TouristRouteMap stops={routeStops} />
                     <div className="tourist-map-exports">
                       <a href={mapLinks.yandex} target="_blank" rel="noreferrer">Яндекс Карты</a>

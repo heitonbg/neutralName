@@ -1,9 +1,0 @@
-PORT=3001
-BOT_TOKEN=f9LHodD0cOILPTd5XiNgD_rAkMH7b04WzVoD_G3VymZqgFbOUS3qQmjWPaD6dLwAqwtunY3ywh3mPMl3uDfX
-WEB_APP_URL=https://webtomaxsite.vercel.app
-DADATA_TOKEN=d9d3dedcd008a7fc9390885226b857d55abca409
-NODE_ENV=development
-NODE_TLS_REJECT_UNAUTHORIZED=0
-AI_API_KEY=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
-AI_MODEL=google/gemma-4-26b-a4b-it:free
-AI_API_URL=https://openrouter.ai/api/v1/chat/completions

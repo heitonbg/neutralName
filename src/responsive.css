@@ -210,7 +210,7 @@ body[data-theme="dark"] .tourist-mode-copy small { color: #a6b8aa; }
   .app-container { display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 24px; width: min(1440px, 100%); max-width: 1440px !important; margin: 0 auto !important; padding: 24px; background: transparent; align-items: start; }
   .desktop-sidebar { display: flex !important; position: sticky; top: 24px; flex-direction: column; width: 208px; min-height: calc(100dvh - 48px); padding: 20px 12px; border: 1px solid #e5eaf1; border-radius: 20px; background: white; }
   .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 0 4px 22px; margin-bottom: 20px; border-bottom: 1px solid #edf0f5; }
-  .sidebar-logo-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #2786f8; color: white; font-size: 22px; }
+  .sidebar-logo-img { display: block; width: 36px; height: 36px; border-radius: 10px; object-fit: contain; flex: 0 0 36px; background: #fff; }
   .sidebar-logo-text h2 { font-size: 17px; }
   .sidebar-logo-team { display: block; margin-top: 4px; font-size: 10px; color: #8290a2; }
   .sidebar-item { display: flex; gap: 10px; align-items: center; padding: 13px 10px; border-radius: 12px; font-size: 13px; color: #66768b; text-align: left; }
@@ -620,7 +620,6 @@ body[data-theme="dark"] .quick-filters {
 
 body[data-theme="dark"] .desktop-sidebar { background: #1e2128 !important; border-color: #2b3038 !important; }
 body[data-theme="dark"] .sidebar-logo { border-color: #2b3038 !important; }
-body[data-theme="dark"] .sidebar-logo-icon { background: #2786f8 !important; color: #fff !important; }
 body[data-theme="dark"] .sidebar-logo-text h2 { color: #e8eaed !important; }
 body[data-theme="dark"] .sidebar-logo-team { color: #8b95a5 !important; }
 body[data-theme="dark"] .sidebar-item { color: #8b95a5 !important; background: transparent !important; }

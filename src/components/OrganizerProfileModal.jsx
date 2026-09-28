@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
 
 const OrganizerProfileModal = ({ organizer, events = [], reviews = [], onClose, onEventClick }) => {
@@ -11,8 +12,6 @@ const OrganizerProfileModal = ({ organizer, events = [], reviews = [], onClose, 
     .join('')
     .toUpperCase();
 
-  // ★ Средняя оценка организатора — по organizerRating в отзывах,
-  //   где organizerId совпадает с текущим организатором.
   const organizerRatings = useMemo(
     () =>
       reviews
@@ -102,7 +101,7 @@ const OrganizerProfileModal = ({ organizer, events = [], reviews = [], onClose, 
                     onEventClick?.(event);
                   }}
                 >
-                  <img src={event.image} alt={event.title} />
+                  <img src={resolveEventImage(event)} alt={event.title} />
                   <span className="organizer-event-info">
                     <strong>{event.title}</strong>
                     <small>{event.date}</small>

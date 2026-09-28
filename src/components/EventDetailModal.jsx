@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { formatEventDate } from '../utils/dateFormat';
 import { getEventStatus, EVENT_STATUS_LABELS } from '../utils/eventFilters';
+import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 import EventLocationMap from './EventLocationMap';
@@ -32,7 +33,7 @@ const EventDetailModal = ({
 }) => {
   const isOwner = isEventOwner(event, userId);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const gallery = (event.images?.length ? event.images : [event.image]).filter(Boolean);
+  const gallery = (event.images?.length ? event.images : [resolveEventImage(event)]).filter(Boolean);
 
   const status = getEventStatus(event);
   const isPast = status === 'past';
@@ -95,7 +96,7 @@ const EventDetailModal = ({
             />
           )}
           <img
-            src={gallery[photoIndex] || event.image}
+            src={gallery[photoIndex] || resolveEventImage(event)}
             alt={`${event.title}, фото ${photoIndex + 1}`}
             className="detail-image"
           />
@@ -252,7 +253,7 @@ const EventDetailModal = ({
                       onRelatedClick?.(rel);
                     }}
                   >
-                    <img src={rel.image} alt={rel.title} />
+                    <img src={resolveEventImage(rel)} alt={rel.title} />
                     <span>
                       <strong>{rel.title}</strong>
                       <small>

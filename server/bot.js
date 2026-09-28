@@ -193,7 +193,7 @@ export function startBot({ token, webAppUrl, username }) {
 
     const polling = bot.start();
     botStatus = 'running';
-    console.log('🤖 Бот MAX Events запущен!');
+    console.log('🤖 Бот Вместе запущен!');
     console.log(`   Username: @${botUsername}`);
     Promise.resolve(polling).catch((error) => {
         botStatus = 'error';

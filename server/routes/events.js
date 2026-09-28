@@ -40,6 +40,26 @@ function isEventPast(event) {
   return Date.now() >= start.getTime() + durationMs;
 }
 
+// ★ Хелпер: нормализует картинки события.
+//   Сервер не подставляет дефолт — он только оставляет то, что реально
+//   пришло с клиента. UI сам выберет картинку по категории, если поля нет.
+function resolveEventImages(body, fallbackImage) {
+  const images = Array.isArray(body.images)
+    ? body.images.filter((src) => typeof src === 'string' && src.trim())
+    : [];
+
+  const single = typeof body.image === 'string' && body.image.trim()
+    ? body.image.trim()
+    : null;
+
+  const first = images[0] || single || fallbackImage || null;
+
+  return {
+    images,
+    image: first,
+  };
+}
+
 // GET /api/events?city=...&category=...&price=...
 router.get('/', (req, res) => {
   const { category, price, city } = req.query;
@@ -96,7 +116,6 @@ router.post('/', (req, res) => {
     format,
     city,
     duration,
-    images,
     organizerId,
     organizerProfile,
   } = req.body;
@@ -114,16 +133,14 @@ router.post('/', (req, res) => {
     if (!addrCheck.isClean) return res.status(400).json({ error: addrCheck.reason });
   }
 
+  const { images, image } = resolveEventImages(req.body);
+
   const newEvent = {
     ...req.body,
     id: Date.now(),
     duration: typeof duration === 'string' ? duration.trim() : '',
-    images: Array.isArray(images) ? images : [],
-    image:
-      Array.isArray(images) && images[0]
-        ? images[0]
-        : req.body.image ||
-          'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&q=80',
+    images,
+    image,
     participants: 1,
     city: city || 'Казань',
     organizerId: String(organizerId),
@@ -149,7 +166,7 @@ router.post('/', (req, res) => {
 // PUT /api/events/:id
 router.put('/:id', (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, title, description, address, format, images, duration } = req.body;
+  const { userId, title, description, address, format, duration } = req.body;
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
@@ -174,12 +191,18 @@ router.put('/:id', (req, res) => {
     if (!c.isClean) return res.status(400).json({ error: c.reason });
   }
 
+  // ★ Если images пришёл — нормализуем; иначе оставляем текущее событие как есть.
+  const hasImagesPatch = Array.isArray(req.body.images) || typeof req.body.image === 'string';
+  const { images, image } = hasImagesPatch
+    ? resolveEventImages(req.body, event.image)
+    : { images: event.images, image: event.image };
+
   const patch = {
     ...req.body,
     id: eventId,
     duration: typeof duration === 'string' ? duration.trim() : event.duration,
-    images: Array.isArray(images) ? images : event.images,
-    image: Array.isArray(images) && images[0] ? images[0] : event.image,
+    images,
+    image,
     updatedAt: new Date().toISOString(),
   };
   delete patch.organizer;
@@ -329,8 +352,6 @@ router.post('/:id/reviews', (req, res) => {
     return res.status(403).json({ error: 'Организатор не может оставить отзыв о своём событии' });
   }
 
-  // ★ Отзыв может оставить только тот, кто записался и не отменил участие
-  //   до окончания события (см. participated_users)
   if (!db.wasUserParticipant(eventId, userId)) {
     return res.status(403).json({ error: 'Отзыв может оставить только участник события' });
   }

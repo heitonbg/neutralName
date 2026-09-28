@@ -5,6 +5,7 @@ import { moderateContent, validateAddress, moderateUrl } from '../utils/contentM
 import { uploadImages, reverseGeocode } from '../api/events';
 import { findNearestCity } from '../utils/citySearch';
 import Icon from './Icon';
+import { getDefaultEventImage } from '../utils/defaultEventImages';
 
 const CATEGORIES = ['Настольные игры', 'Спорт', 'Культура', 'Кино', 'Прогулка', 'Музыка', 'Волонтёрство', 'Другое'];
 
@@ -289,7 +290,7 @@ const CreateEventForm = ({
         distance: '0 км',
         rating: initialEvent?.rating || 0,
         reviewsCount: initialEvent?.reviewsCount || 0,
-        image: finalImages[0] || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&q=80',
+        image: finalImages[0] || getDefaultEventImage(formData.category),
         images: finalImages.length ? finalImages : undefined,
         organizerId: String(userId),      // ★
         organizerProfile,                 // ★

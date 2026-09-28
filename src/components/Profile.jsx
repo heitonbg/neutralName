@@ -194,14 +194,14 @@ const Profile = ({
       <div className="profile-section">
         <h4>О приложении</h4>
         <button className="settings-row-button" onClick={() => setShowAbout(!showAbout)}>
-          <span>О MAX Events</span>
+          <span>О Вместе</span>
           <span>{showAbout ? '▼' : '▶'}</span>
         </button>
         {showAbout && (
           <div className="about-text">
-            <p><strong>MAX Events</strong> — сервис для поиска и создания досуговых событий: спорт, настолки, культура, кино.</p>
+            <p><strong>Вместе</strong> — сервис для поиска и создания досуговых событий: спорт, настолки, культура, кино.</p>
             <p>Версия: 1.0.0 (MVP)</p>
-            <p>Разработчик: команда <strong>neutralname</strong></p>
+            <p>Разработчик: команда <strong>нейтральное название</strong></p>
             <p>Обработка данных: 152-ФЗ</p>
             <p>Модерация контента: активна</p>
           </div>
@@ -214,7 +214,7 @@ const Profile = ({
       </div>
 
       {legalPage && <LegalDocument type={legalPage} onClose={() => setLegalPage(null)} onSwitch={setLegalPage} />}
-      <p className="profile-footer">© 2026 MAX Events · Команда <strong>neutralname</strong></p>
+      <p className="profile-footer">© 2026 Вместе · Команда <strong>нейтральное название</strong></p>
     </div>
   );
 };

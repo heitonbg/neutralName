@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatEventDate } from '../utils/dateFormat';
 import { getEventStatus, EVENT_STATUS_LABELS } from '../utils/eventFilters';
+import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 
@@ -67,7 +68,7 @@ const EventCard = ({
       onClick={() => onClick(event)}
     >
       <div className="event-card-image">
-        <img src={event.image} alt={event.title} loading="lazy" />
+        <img src={resolveEventImage(event)} alt={event.title} loading="lazy" />
         <span
           className={`badge ${event.price === 'Бесплатно' ? 'free' : 'paid'} ${
             event.price === 'Пушкинская карта' ? 'pushkin' : ''

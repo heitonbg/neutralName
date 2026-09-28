@@ -13,10 +13,10 @@ const DesktopSidebar = ({ activeTab, setActiveTab }) => {
   return (
     <aside className="desktop-sidebar">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">N</div>
+        <img src="/logo.png" alt="Вместе" className="sidebar-logo-img" />
         <div className="sidebar-logo-text">
-          <h2>MAX Events</h2>
-          <span className="sidebar-logo-team">команда neutralname</span>
+          <h2>Вместе</h2>
+          <span className="sidebar-logo-team">события рядом</span>
         </div>
       </div>
 
@@ -34,7 +34,7 @@ const DesktopSidebar = ({ activeTab, setActiveTab }) => {
       </nav>
 
       <div className="sidebar-footer">
-        <p>© 2026 MAX Events</p>
+        <p>© 2026 Вместе</p>
         <p className="sidebar-hint">События рядом с вами</p>
       </div>
     </aside>

@@ -110,7 +110,7 @@ router.post('/recommendations', async (req, res) => {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.WEB_APP_URL || 'https://webtomax.vercel.app',
-          'X-OpenRouter-Title': 'MAX Events',
+          'X-OpenRouter-Title': 'Вместе',
         },
         body: JSON.stringify({
           model,
@@ -338,7 +338,7 @@ router.post('/plan', async (req, res) => {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.WEB_APP_URL || 'https://webtomax.vercel.app',
-          'X-OpenRouter-Title': 'MAX Events',
+          'X-OpenRouter-Title': 'Вместе',
         },
         body: JSON.stringify({
           model,

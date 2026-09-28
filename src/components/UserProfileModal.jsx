@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
 
 const statusLabel = (event) => {
@@ -15,7 +16,6 @@ const statusLabel = (event) => {
   );
   if (Number.isNaN(start.getTime())) return '';
 
-  // Длительность по умолчанию — 2 часа
   const durationMs = 2 * 60 * 60 * 1000;
   const end = start.getTime() + durationMs;
 
@@ -33,11 +33,6 @@ export default function UserProfileModal({
   onClose,
   onEventClick,
 }) {
-  // ★ События, в которых человек участвовал: он либо организатор,
-  //   либо в списке участников (по данным event.participants, но у нас есть
-  //   только те события, которые передал App). Фильтруем по organizerId
-  //   и по тому, что человек мог участвовать — если event.participantIds
-  //   есть в объекте события, используем его.
   const personEvents = useMemo(() => {
     const id = String(person?.id || '');
     if (!id) return [];
@@ -52,7 +47,6 @@ export default function UserProfileModal({
     });
   }, [events, person?.id]);
 
-  // ★ Средняя оценка организатора — по organizerRating в отзывах
   const organizerRatings = useMemo(
     () =>
       reviews
@@ -126,7 +120,7 @@ export default function UserProfileModal({
             <div className="person-events">
               {personEvents.slice(0, 20).map((event) => (
                 <button key={event.id} onClick={() => onEventClick(event)}>
-                  <img src={event.image} alt="" />
+                  <img src={resolveEventImage(event)} alt="" />
                   <span>
                     <strong>{event.title}</strong>
                     <small>

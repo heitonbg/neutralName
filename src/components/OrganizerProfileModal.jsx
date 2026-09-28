@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
 import {
@@ -13,7 +13,6 @@ import {
 const OrganizerProfileModal = ({
   organizer,
   events = [],
-  reviews = [],
   onClose,
   onEventClick,
   currentUserId,
@@ -54,27 +53,12 @@ const OrganizerProfileModal = ({
     .join('')
     .toUpperCase();
 
-  const organizerRatings = useMemo(
-    () =>
-      reviews
-        .map((r) => ({
-          organizerId: r.eventOrganizerId,
-          rating: r.organizerRating,
-        }))
-        .filter(
-          (r) =>
-            String(r.organizerId) === String(organizer.id) &&
-            Number.isInteger(r.rating) &&
-            r.rating >= 1 &&
-            r.rating <= 5
-        )
-        .map((r) => r.rating),
-    [reviews, organizer.id]
-  );
-
-  const avgOrganizerRating = organizerRatings.length
-    ? (organizerRatings.reduce((sum, v) => sum + v, 0) / organizerRatings.length).toFixed(1)
-    : '—';
+  const avgOrganizerRating =
+    Number.isFinite(Number(organizer.organizerRating)) &&
+    organizer.organizerRating != null
+      ? Number(organizer.organizerRating).toFixed(1)
+      : '—';
+  const organizerRatingCount = Number(organizer.organizerRatingCount) || 0;
 
   const totalParticipants = events.reduce((sum, e) => sum + (e.participants || 0), 0);
 
@@ -234,7 +218,9 @@ const OrganizerProfileModal = ({
             <div className="organizer-stat-value">
               <Icon name="star" size={16} filled /> {avgOrganizerRating}
             </div>
-            <div className="organizer-stat-label">Рейтинг</div>
+            <div className="organizer-stat-label">
+              Рейтинг организатора{organizerRatingCount ? ` · ${organizerRatingCount}` : ''}
+            </div>
           </div>
         </div>
 

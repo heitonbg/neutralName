@@ -1,5 +1,5 @@
 // src/api/friends.js
-import { maxBridge } from '../utils/maxBridge.js';
+import { openMaxChat } from '../utils/maxBridge.js';
 
 const configuredApiUrl = String(import.meta.env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
 const API = configuredApiUrl || 'https://maxserver-iwrawww.amvera.io';
@@ -293,15 +293,4 @@ export async function removeFriend(userId, friendId) {
 // ============================================
 // ОТКРЫТЬ ЧАТ В MAX
 // ============================================
-export function openMaxChat(userId) {
-  if (!userId) return false;
-  const url = `https://max.ru/u${userId}`;
-  try {
-    if (maxBridge?.openLink) {
-      maxBridge.openLink(url);
-      return true;
-    }
-  } catch {}
-  try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { return false; }
-  return true;
-}
+export { openMaxChat };

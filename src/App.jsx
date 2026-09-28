@@ -173,8 +173,20 @@ function App() {
     refreshFriendsCount(id);
   }, [refreshFriendsCount]);
 
-  const handleOpenFriendProfile = useCallback((person) => {
+  const handleOpenFriendProfile = useCallback(async (person) => {
     setSelectedPerson(person);
+    try {
+      const fresh = await fetchUser(person.id);
+      if (fresh) {
+        setSelectedPerson((current) =>
+          current && String(current.id) === String(person.id)
+            ? { ...current, ...fresh }
+            : current
+        );
+      }
+    } catch (error) {
+      console.warn('Не удалось загрузить профиль друга', error);
+    }
   }, []);
 
   const loadBootstrap = useCallback(async (id) => {
@@ -1297,7 +1309,6 @@ function App() {
             const eventOrgId = e.organizerId ?? e.organizer?.id;
             return String(eventOrgId) === String(selectedOrganizer.id);
           })}
-          reviews={Object.values(reviewsByEvent).flat()}
           onClose={() => setSelectedOrganizer(null)}
           onEventClick={handleEventClick}
           currentUserId={userId}

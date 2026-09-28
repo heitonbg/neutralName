@@ -283,15 +283,4 @@ export const removeFriend = async (userId, friendId) => {
   );
 };
 
-export const openMaxChat = (userId) => {
-  if (!userId) return false;
-  const url = `https://max.ru/u${userId}`;
-  try {
-    if (maxBridge?.openLink) {
-      maxBridge.openLink(url);
-      return true;
-    }
-  } catch {}
-  try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { return false; }
-  return true;
-};
+export { openMaxChat } from '../utils/maxBridge.js';

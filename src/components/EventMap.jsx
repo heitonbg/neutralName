@@ -82,8 +82,7 @@ const renderFriendAvatar = (friend) => {
 };
 
 // ★ Левый символ маркера:
-//   - если на событии есть друзья — ОДНА аватарка активного друга
-//     (кто именно — решает index, который меняется каждые 5 сек в useFriendRotation),
+//   - если на событии есть друзья — ОДНА аватарка активного друга,
 //   - если нет — иконка категории.
 const buildMarkerSymbolHtml = (friend, categorySvgHtml) => {
   if (!friend) {
@@ -92,9 +91,9 @@ const buildMarkerSymbolHtml = (friend, categorySvgHtml) => {
   return `<span class="marker-symbol marker-symbol--friends">${renderFriendAvatar(friend)}</span>`;
 };
 
-// ★ Хук: возвращает индекс активного друга для каждого события и обновляет его каждые 5 сек.
+// ★ Хук: возвращает индекс активного друга для каждого события и обновляет его каждые 7 сек.
 //   Работает только когда есть события с 2+ друзьями — не тратит ресурсы впустую.
-function useFriendRotation(geoEvents, intervalMs = 5000) {
+function useFriendRotation(geoEvents, intervalMs = 7000) {
   const [tick, setTick] = useState(0);
   const hasMultiFriends = useMemo(
     () =>
@@ -286,8 +285,8 @@ const EventMap = ({
     );
   });
 
-  // ★ Общий "тик" для ротации друзей. Меняется каждые 5 секунд.
-  const rotationTick = useFriendRotation(geoEvents, 5000);
+  // ★ Общий "тик" для ротации друзей. Меняется каждые 7 секунд.
+  const rotationTick = useFriendRotation(geoEvents);
 
   const icons = useMemo(
     () =>
@@ -446,7 +445,11 @@ const EventMap = ({
           >
             {geoEvents.map((event) => (
               <Marker
-                key={event.id}
+                key={`${event.id}-${
+                  Array.isArray(event.friendGoers) && event.friendGoers.length > 1
+                    ? rotationTick % event.friendGoers.length
+                    : 0
+                }`}
                 position={[event.lat, event.lng]}
                 icon={icons[event.id]}
                 eventHandlers={{ click: () => setActiveEvent(event) }}

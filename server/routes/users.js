@@ -4,6 +4,31 @@ import db from '../db/sqliteDatabase.js';
 
 const router = express.Router();
 
+function getOrganizerStats(userId) {
+  const organizedEvents = db.events.filter(
+    (event) => String(event.organizerId ?? event.organizer?.id ?? '') === String(userId)
+  );
+  const eventIds = new Set(organizedEvents.map((event) => String(event.id)));
+  const ratings = db.reviews
+    .filter((review) => eventIds.has(String(review.eventId)))
+    .map((review) => review.organizerRating)
+    .filter((rating) => Number.isInteger(rating) && rating >= 1 && rating <= 5);
+  const average = ratings.length
+    ? Math.round(
+        (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10
+      ) / 10
+    : null;
+
+  return {
+    organizerRating: average,
+    organizerRatingCount: ratings.length,
+    organizedEventsCount: organizedEvents.length,
+    reviewsWrittenCount: db.reviews.filter(
+      (review) => String(review.userId) === String(userId)
+    ).length,
+  };
+}
+
 /**
  * GET /api/users/search?q=...&userId=...
  *
@@ -76,7 +101,7 @@ router.get('/search', (req, res) => {
 router.get('/:id', (req, res) => {
   const user = db.findUser(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json(user);
+  res.json({ ...user, ...getOrganizerStats(req.params.id) });
 });
 
 /**

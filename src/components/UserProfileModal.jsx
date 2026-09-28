@@ -83,22 +83,17 @@ export default function UserProfileModal({
     });
   }, [events, person?.id]);
 
-  const organizerRatings = useMemo(
-    () =>
-      reviews
-        .filter((r) => String(r.organizerId || r.eventOrganizerId) === String(person?.id))
-        .map((r) => r.organizerRating)
-        .filter((v) => Number.isInteger(v) && v >= 1 && v <= 5),
-    [reviews, person?.id]
-  );
-
-  const averageOrganizerRating = organizerRatings.length
-    ? (organizerRatings.reduce((sum, v) => sum + v, 0) / organizerRatings.length).toFixed(1)
-    : '—';
-
+  const averageOrganizerRating =
+    Number.isFinite(Number(person?.organizerRating)) &&
+    person?.organizerRating != null
+      ? Number(person.organizerRating).toFixed(1)
+      : '—';
+  const organizerRatingCount = Number(person?.organizerRatingCount) || 0;
   const reviewsByPerson = reviews.filter(
     (review) => String(review.userId) === String(person.id)
   );
+  const reviewsWrittenCount =
+    person?.reviewsWrittenCount ?? reviewsByPerson.length;
 
   const subtitle =
     [person.age && `${person.age} лет`, person.city].filter(Boolean).join(' · ') ||
@@ -249,6 +244,9 @@ export default function UserProfileModal({
           </span>
           <h2 id="person-profile-title">{person.name || 'Участник'}</h2>
           <p>{subtitle}</p>
+          {Number(person.organizedEventsCount) > 0 && (
+            <span className="person-profile-role">Организатор мероприятий</span>
+          )}
           {!isSelf && <div className="person-profile-actions">{renderFriendButtons()}</div>}
         </div>
 
@@ -260,19 +258,26 @@ export default function UserProfileModal({
         )}
 
         <div className="person-profile-stats">
-          <span>
-            <strong>{personEvents.length}</strong>событий
-          </span>
-          <span>
-            <strong>{averageOrganizerRating}</strong>оценка
-          </span>
-          <span>
-            <strong>{reviewsByPerson.length}</strong>отзывов
-          </span>
+          <div className="person-profile-stat">
+            <strong>{personEvents.length}</strong>
+            <small>События</small>
+          </div>
+          <div className="person-profile-stat person-profile-stat--rating">
+            <strong>
+              <Icon name="star" size={15} filled /> {averageOrganizerRating}
+            </strong>
+            <small>
+              Рейтинг организатора{organizerRatingCount ? ` · ${organizerRatingCount}` : ''}
+            </small>
+          </div>
+          <div className="person-profile-stat">
+            <strong>{reviewsWrittenCount}</strong>
+            <small>Отзывов</small>
+          </div>
         </div>
 
         <section className="person-profile-section">
-          <h3>Участвовал(а)</h3>
+          <h3>События</h3>
           {personEvents.length ? (
             <div className="person-events">
               {personEvents.slice(0, 20).map((event) => (

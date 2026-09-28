@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { SEED_EVENTS, SEED_USERS } from './seedEvents.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const envFile = path.join(directory, '..', '.env');
@@ -46,9 +45,19 @@ sql.exec(`
     sent INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (event_id, user_id)
   );
+  CREATE TABLE IF NOT EXISTS friendships (
+    user_id TEXT NOT NULL,
+    friend_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, friend_id)
+  );
   CREATE INDEX IF NOT EXISTS reviews_event_id ON reviews(event_id);
   CREATE INDEX IF NOT EXISTS reminders_due ON reminders(sent, send_at);
   CREATE INDEX IF NOT EXISTS participated_event_id ON participated_users(event_id);
+  CREATE INDEX IF NOT EXISTS friendships_friend ON friendships(friend_id, status);
+  CREATE INDEX IF NOT EXISTS friendships_user ON friendships(user_id, status);
 `);
 
 const statements = {
@@ -79,6 +88,7 @@ const statements = {
   deleteReminder: sql.prepare('DELETE FROM reminders WHERE event_id=? AND user_id=?'),
   dueReminders: sql.prepare('SELECT event_id, user_id FROM reminders WHERE sent=0 AND send_at<=?'),
   markReminderSent: sql.prepare('UPDATE reminders SET sent=1 WHERE event_id=? AND user_id=?'),
+
   touristPlans: sql.prepare('SELECT data FROM tourist_plans WHERE user_id=? ORDER BY updated_at DESC LIMIT 20'),
   upsertTouristPlan: sql.prepare(`
     INSERT INTO tourist_plans (user_id, city, date, data, updated_at)
@@ -92,6 +102,47 @@ const statements = {
     )
   `),
   deleteTouristPlan: sql.prepare('DELETE FROM tourist_plans WHERE user_id=? AND city=? AND date=?'),
+
+  // ---------- FRIENDS ----------
+  upsertFriendRequest: sql.prepare(`
+    INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at)
+    VALUES (?, ?, 'pending', ?, ?)
+    ON CONFLICT(user_id, friend_id) DO UPDATE SET
+      status = CASE
+        WHEN friendships.status = 'accepted' THEN 'accepted'
+        ELSE 'pending'
+      END,
+      updated_at = excluded.updated_at
+  `),
+  acceptFriend: sql.prepare(`
+    UPDATE friendships SET status = 'accepted', updated_at = ?
+    WHERE user_id = ? AND friend_id = ?
+  `),
+  deleteFriendship: sql.prepare(`
+    DELETE FROM friendships
+    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+  `),
+  getFriendship: sql.prepare(`
+    SELECT user_id, friend_id, status FROM friendships
+    WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+  `),
+  listAcceptedFriends: sql.prepare(`
+    SELECT
+      CASE WHEN user_id = ? THEN friend_id ELSE user_id END AS friend_id,
+      status
+    FROM friendships
+    WHERE status = 'accepted' AND (user_id = ? OR friend_id = ?)
+  `),
+  listIncomingRequests: sql.prepare(`
+    SELECT user_id AS from_id, created_at FROM friendships
+    WHERE friend_id = ? AND status = 'pending'
+    ORDER BY created_at DESC
+  `),
+  listOutgoingRequests: sql.prepare(`
+    SELECT friend_id AS to_id, created_at FROM friendships
+    WHERE user_id = ? AND status = 'pending'
+    ORDER BY created_at DESC
+  `),
 };
 
 const rows = (table) =>
@@ -99,14 +150,12 @@ const rows = (table) =>
 
 const users = Object.fromEntries(rows('users').map((user) => [String(user.id), user]));
 
-// ── Текущие участия (для UI: кнопка «Отказаться», «Мои события → Участвую»)
 const joinedUsers = new Map();
 for (const { event_id, user_id } of sql.prepare('SELECT event_id, user_id FROM joins').all()) {
   if (!joinedUsers.has(event_id)) joinedUsers.set(event_id, new Set());
   joinedUsers.get(event_id).add(user_id);
 }
 
-// ── Все, кто когда-либо участвовал (для доступа к отзывам на завершённые события)
 const participatedUsers = new Map();
 for (const { event_id, user_id } of sql
   .prepare('SELECT event_id, user_id FROM participated_users')
@@ -249,9 +298,6 @@ const db = {
     if (!this.joinedUsers.has(Number(eventId))) this.joinedUsers.set(Number(eventId), new Set());
     this.joinedUsers.get(Number(eventId)).add(String(userId));
 
-    // ★ Пока событие не завершено — держим запись в participated_users,
-    //   чтобы после завершения можно было оставить отзыв.
-    //   При leave — тоже удаляем (см. removeJoin в роутере).
     statements.addParticipant.run(Number(eventId), String(userId));
     if (!this.participatedUsers.has(Number(eventId))) {
       this.participatedUsers.set(Number(eventId), new Set());
@@ -264,18 +310,11 @@ const db = {
     this.joinedUsers.get(Number(eventId))?.delete(String(userId));
   },
 
-  /**
-   * Полное удаление участия (используется при leave).
-   * Удаляет и текущее участие (joins), и «когда-либо участвовал» (participated_users).
-   */
   removeParticipant(eventId, userId) {
     statements.removeParticipant.run(Number(eventId), String(userId));
     this.participatedUsers.get(Number(eventId))?.delete(String(userId));
   },
 
-  /**
-   * Был ли пользователь участником события (для доступа к отзывам).
-   */
   wasUserParticipant(eventId, userId) {
     return this.participatedUsers.get(Number(eventId))?.has(String(userId)) || false;
   },
@@ -291,6 +330,64 @@ const db = {
       id,
       isOrganizer: id === organizerId,
     }));
+  },
+
+  // ---------- FRIENDS ----------
+  addFriendRequest(fromId, toId) {
+    if (String(fromId) === String(toId)) throw new Error('Нельзя добавить себя');
+    const now = Date.now();
+    statements.upsertFriendRequest.run(String(fromId), String(toId), now, now);
+  },
+
+  acceptFriendRequest(fromId, toId) {
+    statements.acceptFriend.run(Date.now(), String(fromId), String(toId));
+  },
+
+  removeFriend(userId, friendId) {
+    statements.deleteFriendship.run(
+      String(userId), String(friendId),
+      String(friendId), String(userId)
+    );
+  },
+
+  getFriendshipStatus(userId, otherId) {
+    if (String(userId) === String(otherId)) return 'self';
+    const row = statements.getFriendship.get(
+      String(userId), String(otherId),
+      String(otherId), String(userId)
+    );
+    if (!row) return 'none';
+    if (row.status === 'accepted') return 'friends';
+    if (String(row.user_id) === String(userId)) return 'outgoing';
+    return 'incoming';
+  },
+
+  listFriends(userId) {
+    return statements.listAcceptedFriends.all(
+      String(userId), String(userId), String(userId)
+    ).map((row) => this.users[String(row.friend_id)] || { id: String(row.friend_id), name: 'Пользователь' });
+  },
+
+  listIncomingFriendRequests(userId) {
+    return statements.listIncomingRequests.all(String(userId)).map((row) => ({
+      user: this.users[String(row.from_id)] || { id: String(row.from_id), name: 'Пользователь' },
+      createdAt: row.created_at,
+    }));
+  },
+
+  listOutgoingFriendRequests(userId) {
+    return statements.listOutgoingRequests.all(String(userId)).map((row) => ({
+      user: this.users[String(row.to_id)] || { id: String(row.to_id), name: 'Пользователь' },
+      createdAt: row.created_at,
+    }));
+  },
+
+  friendIdsFor(userId) {
+    return new Set(
+      statements.listAcceptedFriends.all(
+        String(userId), String(userId), String(userId)
+      ).map((row) => String(row.friend_id))
+    );
   },
 
   // ---------- REMINDERS ----------
@@ -317,7 +414,6 @@ const db = {
     statements.markReminderSent.run(Number(eventId), String(userId));
   },
 
-  // legacy-совместимость
   setReminder(key, timerId) {
     this.reminders.set(key, timerId);
   },
@@ -329,59 +425,8 @@ const db = {
   },
 };
 
-if (!db.seeded && db.events.length === 0) {
-  let source = { events: SEED_EVENTS, users: SEED_USERS, reports: [], reviews: [], joinedUsers: {} };
-  const legacyFile = process.env.LEGACY_DB_PATH || path.join(directory, 'db.json');
-  if (fs.existsSync(legacyFile)) {
-    source = JSON.parse(fs.readFileSync(legacyFile, 'utf8'));
-  }
-  sql.exec('BEGIN');
-  try {
-    for (const user of Object.values(source.users || {})) {
-      statements.user.run(String(user.id), JSON.stringify(user));
-      db.users[String(user.id)] = user;
-    }
-    for (const event of source.events || []) {
-      if (event.organizer && typeof event.organizer === 'object') {
-        const user = event.organizer;
-        const id = String(user.id);
-        if (!db.users[id]) {
-          db.users[id] = { ...user, id };
-          statements.user.run(id, JSON.stringify(db.users[id]));
-        }
-        event.organizerId = id;
-        delete event.organizer;
-      }
-      statements.event.run(event.id, JSON.stringify(event));
-      db.events.push(event);
-    }
-    for (const report of source.reports || []) {
-      statements.report.run(String(report.id), JSON.stringify(report));
-      db.reports.push(report);
-    }
-    for (const review of source.reviews || []) {
-      statements.review.run(String(review.id), review.eventId, JSON.stringify(review));
-      db.reviews.push(review);
-    }
-    for (const [eventId, ids] of Object.entries(source.joinedUsers || {})) {
-      for (const id of ids) {
-        statements.join.run(Number(eventId), String(id));
-        statements.addParticipant.run(Number(eventId), String(id));
-        if (!db.joinedUsers.has(Number(eventId))) db.joinedUsers.set(Number(eventId), new Set());
-        db.joinedUsers.get(Number(eventId)).add(String(id));
-        if (!db.participatedUsers.has(Number(eventId))) {
-          db.participatedUsers.set(Number(eventId), new Set());
-        }
-        db.participatedUsers.get(Number(eventId)).add(String(id));
-      }
-    }
-    statements.setMeta.run('seeded', 'true');
-    sql.exec('COMMIT');
-    db.seeded = true;
-  } catch (error) {
-    sql.exec('ROLLBACK');
-    throw error;
-  }
-}
+// ★ Сидинг удалён — база остаётся ровно такой, какой её наполняет пользователь.
+//   Флаг `seeded` больше не устанавливается, `setMeta` остался для возможного
+//   использования в будущем, но в коде больше нигде не вызывается.
 
 export default db;

@@ -11,7 +11,6 @@ import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
 
 const router = express.Router();
 
-// Хелпер: событие завершилось?
 function isEventPast(event) {
   const raw = String(event?.date || '').trim();
   const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T,\s]+(\d{1,2}):(\d{2}))?/);
@@ -40,9 +39,6 @@ function isEventPast(event) {
   return Date.now() >= start.getTime() + durationMs;
 }
 
-// ★ Хелпер: нормализует картинки события.
-//   Сервер не подставляет дефолт — он только оставляет то, что реально
-//   пришло с клиента. UI сам выберет картинку по категории, если поля нет.
 function resolveEventImages(body, fallbackImage) {
   const images = Array.isArray(body.images)
     ? body.images.filter((src) => typeof src === 'string' && src.trim())
@@ -54,20 +50,57 @@ function resolveEventImages(body, fallbackImage) {
 
   const first = images[0] || single || fallbackImage || null;
 
-  return {
-    images,
-    image: first,
-  };
+  return { images, image: first };
 }
 
-// GET /api/events?city=...&category=...&price=...
+// ★ Обогащаем профиль друга данными из db.users.
+//   Проблема была в том, что photo_url терялся или не подставлялся из базы.
+//   Здесь мы берём полный профиль по id и явно достаём photo_url, age, city.
+function buildFriendGoers(event, friendIds) {
+  if (!friendIds || friendIds.size === 0) return [];
+
+  const participantIds = Array.isArray(event.participantIds)
+    ? event.participantIds.map((id) => String(id))
+    : [];
+
+  return participantIds
+    .filter((id) => friendIds.has(id))
+    .map((id) => {
+      const user = db.findUser(id);
+      if (!user) {
+        return { id, name: 'Друг', photo_url: null };
+      }
+      const photo =
+        typeof user.photo_url === 'string' && user.photo_url.trim()
+          ? user.photo_url
+          : null;
+      return {
+        id: String(user.id),
+        name: user.name || 'Друг',
+        photo_url: photo,
+        age: user.age ?? null,
+        city: user.city || null,
+      };
+    })
+    .filter(Boolean);
+}
+
+// GET /api/events?city=...&category=...&price=...&viewerId=...
 router.get('/', (req, res) => {
-  const { category, price, city } = req.query;
+  const { category, price, city, viewerId } = req.query;
   let result = [...db.events];
   if (city) result = result.filter((e) => (e.city || 'Казань') === city);
   if (category) result = result.filter((e) => e.category === category);
   if (price) result = result.filter((e) => e.price === price);
-  res.json(db.hydrateEvents(result));
+
+  const friendIds = viewerId ? db.friendIdsFor(String(viewerId)) : null;
+
+  const hydrated = db.hydrateEvents(result).map((event) => ({
+    ...event,
+    friendGoers: buildFriendGoers(event, friendIds),
+  }));
+
+  res.json(hydrated);
 });
 
 // GET /api/events/joined?userId=123 — текущие участия
@@ -81,7 +114,7 @@ router.get('/joined', (req, res) => {
   res.json({ eventIds });
 });
 
-// GET /api/events/participated?userId=123 — все, кто когда-либо участвовал
+// GET /api/events/participated?userId=123
 router.get('/participated', (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.json({ eventIds: [] });
@@ -96,7 +129,10 @@ router.get('/participated', (req, res) => {
 router.get('/:id', (req, res) => {
   const event = db.findEvent(parseInt(req.params.id, 10));
   if (!event) return res.status(404).json({ error: 'Event not found' });
-  res.json(db.hydrateEvent(event));
+  const hydrated = db.hydrateEvent(event);
+  const viewerId = req.query.viewerId != null ? String(req.query.viewerId) : '';
+  const friendIds = viewerId ? db.friendIdsFor(viewerId) : null;
+  res.json({ ...hydrated, friendGoers: buildFriendGoers(hydrated, friendIds) });
 });
 
 // GET /api/events/:id/participants
@@ -153,7 +189,12 @@ router.post('/', (req, res) => {
   db.addEvent(newEvent);
 
   if (organizerProfile && typeof organizerProfile === 'object') {
-    db.upsertUser(String(organizerId), organizerProfile);
+    // ★ photo_url сохраняем как есть (или null)
+    const profile = { ...organizerProfile };
+    if (typeof profile.photo_url !== 'string' || !profile.photo_url.trim()) {
+      profile.photo_url = null;
+    }
+    db.upsertUser(String(organizerId), profile);
   }
 
   if (db.isNotificationsEnabled(organizerId)) {
@@ -191,7 +232,6 @@ router.put('/:id', (req, res) => {
     if (!c.isClean) return res.status(400).json({ error: c.reason });
   }
 
-  // ★ Если images пришёл — нормализуем; иначе оставляем текущее событие как есть.
   const hasImagesPatch = Array.isArray(req.body.images) || typeof req.body.image === 'string';
   const { images, image } = hasImagesPatch
     ? resolveEventImages(req.body, event.image)
@@ -242,7 +282,12 @@ router.post('/:id/join', (req, res) => {
   db.updateEvent(eventId, event);
 
   if (userProfile && typeof userProfile === 'object') {
-    db.upsertUser(String(userId), userProfile);
+    // ★ photo_url сохраняем как есть (или null)
+    const profile = { ...userProfile };
+    if (typeof profile.photo_url !== 'string' || !profile.photo_url.trim()) {
+      profile.photo_url = null;
+    }
+    db.upsertUser(String(userId), profile);
   }
 
   scheduleEventReminder(event, userId);
@@ -271,8 +316,6 @@ router.post('/:id/leave', (req, res) => {
     return res.status(400).json({ error: 'Вы не участвуете' });
   }
 
-  // ★ Если событие ещё не завершено, пользователь отказывается — значит
-  //   он не участвовал. Удаляем и из joins, и из participated_users.
   db.removeJoin(eventId, userId);
   if (!isEventPast(event)) {
     db.removeParticipant(eventId, userId);
@@ -321,7 +364,6 @@ router.get('/:id/reviews', (req, res) => {
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
-  // Отзывы видны только у завершённых событий, но это не ошибка
   if (!isEventPast(event)) {
     return res.json([]);
   }

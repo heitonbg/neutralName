@@ -13,6 +13,7 @@ import citiesRouter from './routes/cities.js';
 import usersRouter from './routes/users.js';
 import bootstrapRouter from './routes/bootstrap.js';
 import touristRouter from './routes/tourist.js';
+import friendsRouter from './routes/friends.js';
 import { uploadDir } from './utils/uploadStorage.js';
 import { getBotStatus, startBot } from './bot.js';
 import { startReminderWorker } from './reminders.js';
@@ -87,6 +88,7 @@ app.get('/health', (req, res) => {
 app.use('/api/bootstrap', bootstrapRouter);
 app.use('/api/tourist', touristRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/friends', friendsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api/upload', uploadRouter);

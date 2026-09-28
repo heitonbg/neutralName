@@ -1,6 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { resolveEventImage } from '../utils/defaultEventImages';
 import Icon from './Icon';
+import {
+  fetchFriendStatus,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  removeFriend,
+  openMaxChat,
+} from '../api/events';
 
 const statusLabel = (event) => {
   const raw = String(event?.date || '');
@@ -30,9 +38,37 @@ export default function UserProfileModal({
   person,
   events = [],
   reviews = [],
+  currentUserId,
   onClose,
   onEventClick,
+  onFriendsChanged,
 }) {
+  const [friendStatus, setFriendStatus] = useState('none');
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const isSelf = String(person?.id || '') === String(currentUserId || '');
+
+  useEffect(() => {
+    if (!currentUserId || !person?.id || isSelf) {
+      setFriendStatus('none');
+      return;
+    }
+    let cancelled = false;
+    setStatusLoading(true);
+    fetchFriendStatus(currentUserId, person.id)
+      .then((res) => {
+        if (!cancelled) setFriendStatus(res?.status || 'none');
+      })
+      .catch(() => {
+        if (!cancelled) setFriendStatus('none');
+      })
+      .finally(() => {
+        if (!cancelled) setStatusLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [currentUserId, person?.id, isSelf]);
+
   const personEvents = useMemo(() => {
     const id = String(person?.id || '');
     if (!id) return [];
@@ -68,6 +104,126 @@ export default function UserProfileModal({
     [person.age && `${person.age} лет`, person.city].filter(Boolean).join(' · ') ||
     'Профиль участника';
 
+  const notify = () => onFriendsChanged?.({});
+
+  const handleAddFriend = async () => {
+    if (busy || !currentUserId || !person?.id) return;
+    setBusy(true);
+    try {
+      if (friendStatus === 'incoming') {
+        await acceptFriendRequest(currentUserId, person.id);
+        setFriendStatus('friends');
+      } else {
+        const res = await sendFriendRequest(currentUserId, person.id);
+        setFriendStatus(res?.status || 'outgoing');
+      }
+      notify();
+    } catch (error) {
+      console.warn('Не удалось обновить статус дружбы', error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (busy || !currentUserId || !person?.id) return;
+    setBusy(true);
+    try {
+      await declineFriendRequest(currentUserId, person.id);
+      setFriendStatus('none');
+      notify();
+    } catch (error) {
+      console.warn('Не удалось отклонить заявку', error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (busy || !currentUserId || !person?.id) return;
+    setBusy(true);
+    try {
+      await removeFriend(currentUserId, person.id);
+      setFriendStatus('none');
+      notify();
+    } catch (error) {
+      console.warn('Не удалось удалить друга', error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenChat = () => {
+    if (person?.id) openMaxChat(person.id);
+  };
+
+  const renderFriendButtons = () => {
+    if (isSelf || !currentUserId) return null;
+    if (statusLoading) {
+      return <button type="button" className="friend-action-btn" disabled>Загрузка…</button>;
+    }
+    if (friendStatus === 'friends') {
+      return (
+        <>
+          <button
+            type="button"
+            className="friend-action-btn friend-action-btn--chat"
+            onClick={handleOpenChat}
+          >
+            <Icon name="share" size={17} /> Написать в MAX
+          </button>
+          <button
+            type="button"
+            className="friend-action-btn friend-action-btn--danger"
+            onClick={handleRemoveFriend}
+            disabled={busy}
+          >
+            Удалить из друзей
+          </button>
+        </>
+      );
+    }
+    if (friendStatus === 'outgoing') {
+      return (
+        <button type="button" className="friend-action-btn" disabled>
+          Заявка отправлена
+        </button>
+      );
+    }
+    if (friendStatus === 'incoming') {
+      return (
+        <>
+          <button
+            type="button"
+            className="friend-action-btn friend-action-btn--primary"
+            onClick={handleAddFriend}
+            disabled={busy}
+          >
+            Принять заявку
+          </button>
+          <button
+            type="button"
+            className="friend-action-btn friend-action-btn--danger"
+            onClick={handleDecline}
+            disabled={busy}
+          >
+            Отклонить
+          </button>
+        </>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className="friend-action-btn friend-action-btn--primary"
+        onClick={handleAddFriend}
+        disabled={busy}
+      >
+        <Icon name="people" size={17} /> Добавить в друзья
+      </button>
+    );
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <section
@@ -93,6 +249,7 @@ export default function UserProfileModal({
           </span>
           <h2 id="person-profile-title">{person.name || 'Участник'}</h2>
           <p>{subtitle}</p>
+          {!isSelf && <div className="person-profile-actions">{renderFriendButtons()}</div>}
         </div>
 
         {person.about && (

@@ -79,21 +79,23 @@ export const formatDuration = (hours, minutes) => {
 
 const CreateEventForm = ({
   onCreate, onCancel, userId, userName,
-  userPhotoUrl,                     // ★
-  userAge,                          // ★
-  userCity,                         // ★
-  userAbout,                        // ★
+  userPhotoUrl,
+  userAge,
+  userCity,
+  userAbout,
   city = 'Казань',
   cityCoords,
   initialEvent = null
 }) => {
-  const center = cityCoords
-    || CITY_CENTERS[city]
-    || DEFAULT_CENTER;
+  const center = cityCoords || CITY_CENTERS[city] || DEFAULT_CENTER;
 
   const isEdit = Boolean(initialEvent);
   const dt = splitDateTime(initialEvent);
   const durationParsed = parseDuration(initialEvent?.duration);
+
+  const initialFormat = initialEvent?.format
+    || (initialEvent?.district === 'Онлайн' ? 'Онлайн' : 'Офлайн');
+  const isOnlineInitially = initialFormat === 'Онлайн';
 
   const [formData, setFormData] = useState({
     title: initialEvent?.title || '',
@@ -102,23 +104,28 @@ const CreateEventForm = ({
     time: dt.time,
     durationHours: durationParsed.hours,
     durationMinutes: durationParsed.minutes,
-    format: initialEvent?.format || (initialEvent?.district === 'Онлайн' ? 'Онлайн' : 'Офлайн'),
+    format: initialFormat,
     price: initialEvent?.price || 'Бесплатно',
     address: /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/.test(initialEvent?.address || '')
       ? `${initialEvent?.city || city}, место на карте`
-      : initialEvent?.address || '',
-    district: initialEvent?.district || '',
-    city: initialEvent?.city || city,
+      : (isOnlineInitially ? '' : (initialEvent?.address || '')),
+    district: isOnlineInitially ? '' : (initialEvent?.district || ''),
+    city: isOnlineInitially ? '' : (initialEvent?.city || city),
     limit: initialEvent?.maxParticipants ? String(initialEvent.maxParticipants) : '',
     maxChatUrl: initialEvent?.maxChatUrl || '',
     description: initialEvent?.description || '',
     images: initialEvent?.images || (initialEvent?.image ? [initialEvent.image] : []),
-    lat: initialEvent?.lat ?? center.lat,
-    lng: initialEvent?.lng ?? center.lng
+    lat: isOnlineInitially ? null : (initialEvent?.lat ?? center.lat),
+    lng: isOnlineInitially ? null : (initialEvent?.lng ?? center.lng),
   });
+
   const [newFiles, setNewFiles] = useState([]);
   const [errors, setErrors] = useState({});
-  const [publicPlaceConfirmed, setPublicPlaceConfirmed] = useState(isEdit);
+  // ★ Для нового офлайн-события галочка по умолчанию не стоит.
+  //   Для онлайн — не важна, проверим только когда format === 'Офлайн'.
+  const [publicPlaceConfirmed, setPublicPlaceConfirmed] = useState(
+    isEdit ? !isOnlineInitially : false
+  );
   const [submitting, setSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -129,6 +136,51 @@ const CreateEventForm = ({
   const setField = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const setFormat = (nextFormat) => {
+    setFormData((prev) => {
+      if (nextFormat === 'Онлайн') {
+        return {
+          ...prev,
+          format: 'Онлайн',
+          address: '',
+          district: '',
+          city: '',
+          lat: null,
+          lng: null,
+        };
+      }
+      const fallback = cityCoords || CITY_CENTERS[city] || DEFAULT_CENTER;
+      return {
+        ...prev,
+        format: 'Офлайн',
+        lat: prev.lat ?? fallback.lat,
+        lng: prev.lng ?? fallback.lng,
+        city: prev.city || city,
+      };
+    });
+
+    // ★ При уходе в онлайн «подтверждаем» галочку — она не нужна.
+    //   Если потом вернёмся в офлайн, пользователь её проставит заново.
+    if (nextFormat === 'Онлайн') {
+      setPublicPlaceConfirmed(true);
+    } else {
+      setPublicPlaceConfirmed(false);
+    }
+
+    // Сбрасываем ошибку «publicPlace», чтобы она не висела на скрытом поле.
+    setErrors((prev) => {
+      if (!prev.publicPlace) return prev;
+      const next = { ...prev };
+      delete next.publicPlace;
+      return next;
+    });
+
+    setDraftPoint(null);
+    setDetectedCity(null);
+    setShowMapPicker(false);
+    setShowSuggestions(false);
   };
 
   const chooseSuggestion = (suggestion) => {
@@ -248,7 +300,11 @@ const CreateEventForm = ({
       if (!imageCheck.isClean) nextErrors.image = imageCheck.reason;
     }
 
-    if (!publicPlaceConfirmed) nextErrors.publicPlace = 'Подтвердите, что встреча проходит в общественном месте';
+    // ★ Проверяем галочку ТОЛЬКО для офлайн-событий.
+    if (formData.format !== 'Онлайн' && !publicPlaceConfirmed) {
+      nextErrors.publicPlace = 'Подтвердите, что встреча проходит в общественном месте';
+    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -268,7 +324,6 @@ const CreateEventForm = ({
       const durationStr = formatDuration(formData.durationHours, formData.durationMinutes);
       const startAt = new Date(`${formData.date}T${formData.time}`).toISOString();
 
-      // ★ Профиль организатора: сервер сам сохранит его в db.users
       const organizerProfile = {
         name: userName || 'Вы',
         photo_url: userPhotoUrl || undefined,
@@ -277,14 +332,18 @@ const CreateEventForm = ({
         about: userAbout || undefined,
       };
 
-      await onCreate({
+      const isOnline = formData.format === 'Онлайн';
+
+      const payload = {
         ...formData,
         date: `${formData.date}, ${formData.time}`,
         startAt,
         duration: durationStr,
-        address: formData.format === 'Онлайн' ? 'Онлайн' : formData.address,
-        district: formData.format === 'Онлайн' ? 'Онлайн' : (formData.district || formData.address),
-        city: formData.city || city,
+        address: isOnline ? 'Онлайн' : formData.address,
+        district: isOnline ? 'Онлайн' : (formData.district || formData.address),
+        city: isOnline ? null : (formData.city || city),
+        lat: isOnline ? null : formData.lat,
+        lng: isOnline ? null : formData.lng,
         maxParticipants: Number.parseInt(formData.limit, 10) || 50,
         participants: isEdit ? initialEvent.participants : 1,
         distance: '0 км',
@@ -292,9 +351,11 @@ const CreateEventForm = ({
         reviewsCount: initialEvent?.reviewsCount || 0,
         image: finalImages[0] || getDefaultEventImage(formData.category),
         images: finalImages.length ? finalImages : undefined,
-        organizerId: String(userId),      // ★
-        organizerProfile,                 // ★
-      }, initialEvent?.id);
+        organizerId: String(userId),
+        organizerProfile,
+      };
+
+      await onCreate(payload, initialEvent?.id);
     } catch (error) {
       setErrors({ submit: error.message || 'Не удалось сохранить событие' });
     } finally {
@@ -307,7 +368,7 @@ const CreateEventForm = ({
 
     const nearest = findNearestCity(draftPoint.lat, draftPoint.lng, 100);
     let resolved = null;
-    try { resolved = await reverseGeocode(draftPoint.lat, draftPoint.lng); } catch { /* coordinates remain usable without geocoding */ }
+    try { resolved = await reverseGeocode(draftPoint.lat, draftPoint.lng); } catch {}
 
     setFormData((prev) => ({
       ...prev,
@@ -330,6 +391,8 @@ const CreateEventForm = ({
     ...newFiles.map((file, i) => ({ src: URL.createObjectURL(file), index: formData.images.length + i }))
   ];
 
+  const isOnline = formData.format === 'Онлайн';
+
   return (
     <div className="create-form-v2">
       <div className="create-header">
@@ -341,6 +404,7 @@ const CreateEventForm = ({
           <p className="create-subtitle">Делитесь идеями. Собирайте людей. Делайте город ярче.</p>
         </div>
       </div>
+
       <form onSubmit={submit}>
         <div className="form-group">
           <label>Название события</label>
@@ -376,9 +440,7 @@ const CreateEventForm = ({
               <input type="time" value={formData.time} onChange={(e) => setField('time', e.target.value)} />
             </div>
           </div>
-          {(errors.date || errors.time) && (
-            <p className="error-text">{errors.date || errors.time}</p>
-          )}
+          {(errors.date || errors.time) && <p className="error-text">{errors.date || errors.time}</p>}
         </div>
 
         <div className="form-group">
@@ -386,46 +448,30 @@ const CreateEventForm = ({
           <div className="form-row-2">
             <div className={`input-with-icon ${errors.duration ? 'error' : ''}`}>
               <span className="input-icon"><Icon name="clock" size={21} /></span>
-              <input
-                type="number"
-                min="0"
-                max="72"
-                value={formData.durationHours}
-                onChange={(e) => setField('durationHours', e.target.value)}
-                placeholder="Часы"
-              />
+              <input type="number" min="0" max="72" value={formData.durationHours} onChange={(e) => setField('durationHours', e.target.value)} placeholder="Часы" />
             </div>
             <div className={`input-with-icon ${errors.duration ? 'error' : ''}`}>
               <span className="input-icon"><Icon name="clock" size={21} /></span>
-              <input
-                type="number"
-                min="0"
-                max="59"
-                value={formData.durationMinutes}
-                onChange={(e) => setField('durationMinutes', e.target.value)}
-                placeholder="Минуты"
-              />
+              <input type="number" min="0" max="59" value={formData.durationMinutes} onChange={(e) => setField('durationMinutes', e.target.value)} placeholder="Минуты" />
             </div>
           </div>
           {errors.duration && <p className="error-text">{errors.duration}</p>}
-          <p className="hint-text-with-icon">
-            Укажите, сколько будет длиться событие. Например, для фильма — 2 ч 15 мин.
-          </p>
+          <p className="hint-text-with-icon">Укажите, сколько будет длиться событие. Например, для фильма — 2 ч 15 мин.</p>
         </div>
 
         <div className="form-group">
           <label>Формат</label>
           <div className="format-segmented">
-            <button type="button" className={formData.format === 'Офлайн' ? 'active' : ''} onClick={() => setField('format', 'Офлайн')}>
+            <button type="button" className={formData.format === 'Офлайн' ? 'active' : ''} onClick={() => setFormat('Офлайн')}>
               <Icon name="people" size={21} />Офлайн
             </button>
-            <button type="button" className={formData.format === 'Онлайн' ? 'active' : ''} onClick={() => setField('format', 'Онлайн')}>
+            <button type="button" className={formData.format === 'Онлайн' ? 'active' : ''} onClick={() => setFormat('Онлайн')}>
               <Icon name="monitor" size={21} />Онлайн
             </button>
           </div>
         </div>
 
-        {formData.format === 'Офлайн' && (
+        {!isOnline && (
           <div className="form-group">
             <label>Место проведения</label>
             <div className={`address-control input-with-icon ${errors.address ? 'error' : ''}`}>
@@ -569,11 +615,16 @@ const CreateEventForm = ({
           </div>
         </div>
 
-        <div className="checkbox-group">
-          <input type="checkbox" id="publicPlace" checked={publicPlaceConfirmed} onChange={(e) => setPublicPlaceConfirmed(e.target.checked)} />
-          <label htmlFor="publicPlace">Подтверждаю, что мероприятие проходит в общественном месте</label>
-        </div>
-        {errors.publicPlace && <p className="error-text public-place-error">{errors.publicPlace}</p>}
+        {!isOnline && (
+          <>
+            <div className="checkbox-group">
+              <input type="checkbox" id="publicPlace" checked={publicPlaceConfirmed} onChange={(e) => setPublicPlaceConfirmed(e.target.checked)} />
+              <label htmlFor="publicPlace">Подтверждаю, что мероприятие проходит в общественном месте</label>
+            </div>
+            {errors.publicPlace && <p className="error-text public-place-error">{errors.publicPlace}</p>}
+          </>
+        )}
+
         {errors.submit && <p className="error-text submit-error">{errors.submit}</p>}
 
         <button type="submit" className="submit-btn-v2" disabled={submitting}>

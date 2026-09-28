@@ -5,6 +5,71 @@ import db from '../db/sqliteDatabase.js';
 const router = express.Router();
 
 /**
+ * GET /api/users/search?q=...&userId=...
+ *
+ * Поиск пользователей по имени или ID. Возвращает обогащённый результат:
+ * для каждого найденного пользователя указывает статус дружбы с viewerId:
+ *   friendshipStatus: 'accepted' | 'pending' | null
+ *   requestedByMe:    true — если заявку отправил viewerId,
+ *                     false — если заявка пришла от найденного пользователя
+ *
+ * ⚠️ Важно: этот роут должен идти ДО `/:id`, иначе Express воспримет
+ * "search" как значение параметра `:id`.
+ */
+router.get('/search', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase().slice(0, 80);
+  const viewerId = String(req.query.userId || '');
+
+  if (q.length < 2) return res.json({ users: [] });
+
+  const friendIds = viewerId ? db.friendIdsFor(viewerId) : new Set();
+
+  const incomingIds = viewerId
+    ? new Set(db.listIncomingFriendRequests(viewerId).map((r) => String(r.user?.id)))
+    : new Set();
+  const outgoingIds = viewerId
+    ? new Set(db.listOutgoingFriendRequests(viewerId).map((r) => String(r.user?.id)))
+    : new Set();
+
+  const users = Object.values(db.users)
+    .filter((u) => u && String(u.id) !== viewerId)
+    .filter((u) => {
+      const name = String(u.name || '').toLowerCase();
+      const id = String(u.id || '');
+      return name.includes(q) || id.includes(q);
+    })
+    .slice(0, 30)
+    .map((u) => {
+      const id = String(u.id);
+      let friendshipStatus = null;
+      let requestedByMe = false;
+
+      if (friendIds.has(id)) {
+        friendshipStatus = 'accepted';
+      } else if (outgoingIds.has(id)) {
+        friendshipStatus = 'pending';
+        requestedByMe = true;
+      } else if (incomingIds.has(id)) {
+        friendshipStatus = 'pending';
+        requestedByMe = false;
+      }
+
+      return {
+        id,
+        name: u.name || 'Пользователь',
+        photo_url: u.photo_url || null,
+        city: u.city || null,
+        age: u.age ?? null,
+        about: u.about || null,
+        friendshipStatus,
+        requestedByMe,
+      };
+    });
+
+  res.json({ users });
+});
+
+/**
  * GET /api/users/:id
  * Возвращает профиль пользователя.
  */

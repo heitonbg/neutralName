@@ -1,13 +1,13 @@
 import React from 'react';
 import Icon from './Icon';
 
-const DesktopSidebar = ({ activeTab, setActiveTab }) => {
+const DesktopSidebar = ({ activeTab, setActiveTab, incomingFriendsCount = 0 }) => {
   const menuItems = [
     { id: 'feed', icon: 'home', label: 'Главная' },
     { id: 'create', icon: 'plus', label: 'Создать событие' },
     { id: 'my', icon: 'user', label: 'Мои события' },
-    { id: 'favorites', icon: 'heart', label: 'Избранное' },
-    { id: 'profile', icon: 'grid', label: 'Профиль' }
+    { id: 'friends', icon: 'people', label: 'Друзья', badge: incomingFriendsCount },
+    { id: 'profile', icon: 'grid', label: 'Профиль' },
   ];
 
   return (
@@ -28,7 +28,10 @@ const DesktopSidebar = ({ activeTab, setActiveTab }) => {
             className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
           >
             <span className="sidebar-icon"><Icon name={item.icon} size={20} /></span>
-            <span>{item.label}</span>
+            <span className="sidebar-label">{item.label}</span>
+            {item.badge > 0 && (
+              <span className="sidebar-badge">{item.badge}</span>
+            )}
           </button>
         ))}
       </nav>

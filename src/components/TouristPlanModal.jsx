@@ -247,7 +247,7 @@ const TouristPlanModal = ({
     const request = {
       city,
       date,
-      days: Number(days),
+      days: Math.max(1, Math.min(7, Number(days) || 1)),
       interests,
       budget,
       maxDistanceKm: maxDistanceKm || null,
@@ -688,7 +688,7 @@ const TouristPlanModal = ({
                 min="1"
                 max="7"
                 value={days}
-                onChange={(event) => setDays(Math.max(1, Math.min(7, Number(event.target.value) || 1)))}
+                onChange={(event) => setDays(event.target.value === '' ? '' : Math.max(1, Math.min(7, Number(event.target.value))))}
               />
             </label>
           </div>

@@ -1512,11 +1512,11 @@ body:has(.detail-overlay) .bottom-nav { display: none !important; }
 .tourist-place-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #177a56; }
 .tourist-place-picker-heading h3 { color: #33483e; font-size: 14px; }
 .tourist-place-picker-heading p { margin-top: 3px; color: #718078; font-size: 11px; line-height: 1.35; }
-.tourist-place-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
-.tourist-place-kind { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: #eef4ef; }
-.tourist-place-kind button { min-height: 30px; padding: 5px 9px; border-radius: 8px; background: transparent; color: #64766b; font-size: 11px; font-weight: 650; }
+.tourist-place-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.tourist-place-kind { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: #eef4ef; flex: 1 1 100%; flex-wrap: nowrap; box-sizing: border-box; }
+.tourist-place-kind button { flex: 1 1 0; min-height: 36px; padding: 5px 9px; border-radius: 8px; text-overflow: ellipsis; min-width: 0; white-space: nowrap; overflow: hidden; background: transparent; color: #64766b; font-size: 11px; font-weight: 650; box-sizing: border-box; }
 .tourist-place-kind button.active { background: #fff; color: #177a56; box-shadow: 0 1px 4px #1e493016; }
-.tourist-place-search { min-height: 36px; padding: 7px 11px; border-radius: 9px; background: #177a56; color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.tourist-place-search { flex: 1 1 100%; min-height: 36px; padding: 7px 11px; border-radius: 9px; background: #177a56; color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; box-sizing: border-box; }
 .tourist-place-search:disabled { opacity: .5; cursor: not-allowed; }
 .tourist-place-attribution { margin-top: 9px; color: #829087; font-size: 10px; line-height: 1.4; }
 .tourist-place-results { display: grid; gap: 0; margin: 10px 0 0; padding: 0; list-style: none; }
@@ -1530,17 +1530,11 @@ body:has(.detail-overlay) .bottom-nav { display: none !important; }
 .tourist-place-text-search { display: grid; gap: 6px; margin: 12px 0 2px; }
 .tourist-place-text-search label { color: #52675b; font-size: 11px; font-weight: 650; }
 .tourist-place-text-search > div { display: flex; min-width: 0; gap: 7px; }
-.tourist-place-text-search input { flex: 1 1 auto; min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid #dbe6df; border-radius: 9px; background: #fbfdfb; color: #263b33; font: inherit; font-size: 12px; }
-.tourist-place-text-search button { flex: 0 0 auto; min-width: 68px; min-height: 38px; padding: 7px 10px; border-radius: 9px; background: #e8f4ec; color: #177a56; font-size: 11px; font-weight: 700; }
-.tourist-place-text-search button:disabled { opacity: .45; cursor: not-allowed; }
 .tourist-manual-stop-form { display: grid; gap: 10px; padding-top: 14px; margin-top: 14px; border-top: 1px solid #e7ede8; }
 .tourist-manual-stop-form h4 { color: #33483e; font-size: 13px; }
 .tourist-manual-stop-form > label { display: grid; min-width: 0; gap: 6px; color: #435b53; font-size: 12px; font-weight: 650; }
-.tourist-manual-stop-form input { width: 100%; min-width: 0; min-height: 40px; padding: 9px 10px; border: 1px solid #dbe6df; border-radius: 9px; background: #fbfdfb; color: #263b33; font: inherit; font-size: 13px; }
 .tourist-manual-address-row { display: flex; min-width: 0; gap: 7px; }
-.tourist-manual-address-row button,
-.tourist-manual-map-toggle { display: inline-flex; min-height: 38px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid #d8e5db; border-radius: 9px; background: #f7faf7; color: #28704f; font-size: 11px; font-weight: 700; }
-.tourist-manual-address-row button:disabled { opacity: .5; }
+.tourist-manual-map-toggle { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 0px 14px; border: 1px solid #d8e5db; border-radius: 9px; background: #f7faf7; color: #28704f; font-size: 11px; font-weight: 700; }
 .tourist-manual-address-results { display: grid; gap: 4px; max-height: 150px; overflow-y: auto; margin: -4px 0 0; padding: 0; list-style: none; }
 .tourist-manual-address-results button { width: 100%; padding: 9px; border-radius: 8px; background: #f7faf7; color: #435b53; text-align: left; font-size: 11px; line-height: 1.4; }
 .tourist-manual-stop-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -1970,3 +1964,50 @@ body[data-theme="dark"] .geo-source-badge--world {
   background: #2a2140;
   color: #a791ff;
 }
+
+@media (min-width: 480px) {
+  .tourist-place-kind { flex: 1 1 auto; }
+  .tourist-place-search { flex: 0 0 auto; min-width: 150px; }
+}
+
+/* ★ Единый размер инпутов и кнопок "Найти" в туристическом планировщике */
+.tourist-place-text-search input,
+.tourist-manual-stop-form input,
+.tourist-manual-address-row input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dbe6df;
+  border-radius: 10px;
+  background: #fbfdfb;
+  color: #263b33;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+/* ★ Кнопки "Найти" — ровно той же высоты, что и инпуты */
+.tourist-place-text-search button,
+.tourist-manual-address-row button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: #e8f4ec;
+  color: #177a56;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.tourist-place-text-search button:disabled,
+.tourist-manual-address-row button:disabled { opacity: .5; cursor: not-allowed; }

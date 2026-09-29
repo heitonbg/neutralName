@@ -39,6 +39,9 @@ const formatDay = (event) => {
     : String(event.date || '').split(',')[0];
 };
 
+const formatTimeInput = (date) =>
+  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
 const formatPlanSummary = (events) => {
   const count = events.length;
   const remainder100 = count % 100;
@@ -173,6 +176,7 @@ const TouristPlanModal = ({
   const [placeSearchError, setPlaceSearchError] = useState('');
   const [manualStopName, setManualStopName] = useState('');
   const [manualDuration, setManualDuration] = useState(45);
+  const [manualStartTime, setManualStartTime] = useState('');
   const [manualAddress, setManualAddress] = useState('');
   const [manualPoint, setManualPoint] = useState(null);
   const [manualAddressResults, setManualAddressResults] = useState([]);
@@ -491,9 +495,11 @@ const TouristPlanModal = ({
       lat: Number(manualPoint.lat),
       lng: Number(manualPoint.lng),
       durationMinutes: manualDuration,
+      startTime: manualStartTime || null,
     });
     setManualStopName('');
     setManualDuration(45);
+    setManualStartTime('');
     setManualAddress('');
     setManualPoint(null);
     setManualAddressResults([]);
@@ -608,6 +614,25 @@ const TouristPlanModal = ({
             : place),
           customStops: (option.customStops || []).map((stop) => stop.id === placeId
             ? { ...stop, durationMinutes: Number(durationMinutes) }
+            : stop),
+          savedAt: null,
+        }
+        : option),
+    }));
+    markPlanDirty();
+  };
+
+  const updatePlaceStartTime = (placeId, startTime) => {
+    setPlan((current) => ({
+      ...current,
+      options: current.options.map((option) => option.id === current.selectedOptionId
+        ? {
+          ...option,
+          places: (option.places || []).map((place) => place.id === placeId
+            ? { ...place, startTime: startTime || null }
+            : place),
+          customStops: (option.customStops || []).map((stop) => stop.id === placeId
+            ? { ...stop, startTime: startTime || null }
             : stop),
           savedAt: null,
         }
@@ -865,6 +890,15 @@ const TouristPlanModal = ({
                                 ))}
                               </select>
                             </label>
+                            <label className="tourist-place-start-time">
+                              Начало
+                              <input
+                                type="time"
+                                aria-label={`Время начала остановки «${stop.name}»`}
+                                value={stop.startTime || formatTimeInput(schedule.start)}
+                                onChange={(event) => updatePlaceStartTime(stop.id, event.target.value)}
+                              />
+                            </label>
                           </div>
                         ) : (
                           <button
@@ -1080,12 +1114,21 @@ const TouristPlanModal = ({
                         {manualMapOpen ? 'Скрыть карту' : 'Выбрать точку на карте'}
                       </button>
                       <label className="tourist-place-duration">
-                        Плановое время
+                        Длительность
                         <select aria-label="Плановая длительность ручной остановки" value={manualDuration} onChange={(event) => setManualDuration(Number(event.target.value))}>
                           {[30, 45, 60, 90, 120].map((minutes) => (
                             <option key={minutes} value={minutes}>{minutes} мин</option>
                           ))}
                         </select>
+                      </label>
+                      <label className="tourist-place-start-time">
+                        Начало
+                        <input
+                          type="time"
+                          aria-label="Время начала своей остановки"
+                          value={manualStartTime}
+                          onChange={(event) => setManualStartTime(event.target.value)}
+                        />
                       </label>
                     </div>
                     {manualMapOpen && (

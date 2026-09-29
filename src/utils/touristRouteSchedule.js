@@ -14,6 +14,21 @@ const dateKey = (date) => [
 
 const atStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
+const placeStartFromTime = (time, date) => {
+  const match = String(time || '').match(/^(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    minutes
+  );
+};
+
 export function getTouristRouteSchedule(stops, { defaultDate, now = new Date() } = {}) {
   const items = Array.isArray(stops) ? stops : [];
   const firstEventStart = items
@@ -28,10 +43,13 @@ export function getTouristRouteSchedule(stops, { defaultDate, now = new Date() }
 
   items.forEach((stop) => {
     const isPlace = isTouristPlace(stop);
-    const fixedStart = isPlace ? null : parseEventStart(stop, now);
     const durationMinutes = isPlace
       ? Math.max(15, Math.min(240, Number(stop.durationMinutes) || DEFAULT_PLACE_DURATIONS[stop.kind] || 60))
       : Math.round(parseEventDuration(stop) / 60_000);
+    const placeTimeDate = isPlace && stop.startTime
+      ? placeStartFromTime(stop.startTime, previousScheduledDate)
+      : null;
+    const fixedStart = isPlace ? placeTimeDate : parseEventStart(stop, now);
     const stopDate = fixedStart || previousScheduledDate;
     previousScheduledDate = stopDate;
     const key = dateKey(stopDate);

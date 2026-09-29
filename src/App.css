@@ -759,6 +759,14 @@ input, select, textarea { font-family: inherit; }
   color: var(--vk-blue);
 }
 
+.event-price-options button {
+  min-width: 0;
+  padding: 9px 5px;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .form-group .event-price-amount {
   display: grid;
   gap: 8px;
@@ -2530,10 +2538,6 @@ body[data-theme="dark"] .person-profile-section h3 {
 
 body[data-theme="dark"] .person-profile-section p {
   color: #a8b2c1 !important;
-}
-
-body[data-theme="dark"] .person-profile-stats {
-  background: #262a33 !important;
 }
 
 body[data-theme="dark"] .person-profile-stats span {

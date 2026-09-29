@@ -10,6 +10,7 @@ import { uploadDir } from '../utils/uploadStorage.js';
 import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
 
 const router = express.Router();
+const EVENT_PRICES = new Set(['Бесплатно', 'Платно', 'Пушкинская карта']);
 
 const normalizePriceAmount = (price, value) => {
   if (price !== 'Платно') return { amount: null };
@@ -17,6 +18,14 @@ const normalizePriceAmount = (price, value) => {
   const amount = Number(value);
   if (!Number.isInteger(amount) || amount < 1) return null;
   return { amount };
+};
+
+const hasValidCoordinates = (lat, lng) => {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  return lat != null && lng != null &&
+    Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 &&
+    Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
 };
 
 function isEventPast(event) {
@@ -167,6 +176,9 @@ router.post('/', (req, res) => {
   if (!organizerId) return res.status(400).json({ error: 'organizerId required' });
 
   const price = req.body.price || 'Бесплатно';
+  if (!EVENT_PRICES.has(price)) {
+    return res.status(400).json({ error: 'Выберите корректный вариант стоимости события' });
+  }
   const normalizedPrice = normalizePriceAmount(price, req.body.priceAmount);
   if (!normalizedPrice) {
     return res.status(400).json({ error: 'Для платного события укажите стоимость целым числом от 1 ₽' });
@@ -179,6 +191,13 @@ router.post('/', (req, res) => {
   if (!descCheck.isClean) return res.status(400).json({ error: descCheck.reason });
 
   if (format !== 'Онлайн') {
+    if (!hasValidCoordinates(req.body.lat, req.body.lng)) {
+      return res.status(400).json({ error: 'Выберите найденный адрес или укажите точку на карте' });
+    }
+    const addressContentCheck = moderateContent(address || '');
+    if (!addressContentCheck.isClean) {
+      return res.status(400).json({ error: addressContentCheck.reason });
+    }
     const addrCheck = validateAddress(address || '');
     if (!addrCheck.isClean) return res.status(400).json({ error: addrCheck.reason });
   }
@@ -243,8 +262,22 @@ router.put('/:id', (req, res) => {
     const c = moderateContent(description);
     if (!c.isClean) return res.status(400).json({ error: c.reason });
   }
-  if (format !== 'Онлайн' && address) {
-    const c = validateAddress(address);
+  const nextFormat = format ?? event.format;
+  const nextAddress = address ?? event.address;
+  const nextLat = req.body.lat ?? event.lat;
+  const nextLng = req.body.lng ?? event.lng;
+  if (nextFormat !== 'Онлайн') {
+    if (!hasValidCoordinates(nextLat, nextLng)) {
+      return res.status(400).json({ error: 'Выберите найденный адрес или укажите точку на карте' });
+    }
+    if (!nextAddress) {
+      return res.status(400).json({ error: 'Укажите место проведения' });
+    }
+    const addressContentCheck = moderateContent(nextAddress);
+    if (!addressContentCheck.isClean) {
+      return res.status(400).json({ error: addressContentCheck.reason });
+    }
+    const c = validateAddress(nextAddress);
     if (!c.isClean) return res.status(400).json({ error: c.reason });
   }
 
@@ -253,17 +286,21 @@ router.put('/:id', (req, res) => {
     ? resolveEventImages(req.body, event.image)
     : { images: event.images, image: event.image };
 
-  const priceChanged = Object.hasOwn(req.body, 'price') || Object.hasOwn(req.body, 'priceAmount');
-  const normalizedPrice = priceChanged
-    ? normalizePriceAmount(req.body.price ?? event.price, req.body.priceAmount)
-    : { amount: event.priceAmount ?? null };
+  const nextPrice = req.body.price ?? event.price ?? 'Бесплатно';
+  if (!EVENT_PRICES.has(nextPrice)) {
+    return res.status(400).json({ error: 'Выберите корректный вариант стоимости события' });
+  }
+  const normalizedPrice = normalizePriceAmount(
+    nextPrice,
+    Object.hasOwn(req.body, 'priceAmount') ? req.body.priceAmount : event.priceAmount
+  );
   if (!normalizedPrice) {
     return res.status(400).json({ error: 'Для платного события укажите стоимость целым числом от 1 ₽' });
   }
 
   const patch = {
     ...req.body,
-    price: req.body.price ?? event.price,
+    price: nextPrice,
     priceAmount: normalizedPrice.amount,
     id: eventId,
     duration: typeof duration === 'string' ? duration.trim() : event.duration,
@@ -365,6 +402,10 @@ router.delete('/:id', async (req, res) => {
 
   if (!userId || String(event.organizerId) !== String(userId)) {
     return res.status(403).json({ error: 'Только организатор может удалить событие' });
+  }
+
+  if (isEventPast(event)) {
+    return res.status(400).json({ error: 'Завершённое событие нельзя удалить' });
   }
 
   const unusedUploads = collectUnusedEventUploadFilenames(event, db.events);

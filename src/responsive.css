@@ -77,6 +77,7 @@ body[data-theme="dark"] .main-content > .content-area { background-color: #1e212
 .event-map-marker.orange { --marker-color: #fa7341; }
 .event-map-marker.violet { --marker-color: #8d51e8; }
 .event-map-marker .marker-symbol { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; background: var(--marker-color); color: white; }
+.event-map-marker .marker-symbol--friends { background: transparent; }
 .marker-symbol svg { display: block; width: 23px; height: 23px; stroke: white; }
 .map-screen .leaflet-control-container { position: relative; z-index: 600; }
 .map-event-preview { max-height: 45%; overflow-y: auto; }
@@ -147,6 +148,8 @@ body[data-theme="dark"] .main-content > .content-area { background-color: #1e212
 .filter-row-v2 .filter-label { width: auto; }
 .address-suggestions:empty { display: none; }
 .address-suggestions { z-index: 50; }
+.address-search-status { margin: 0; padding: 10px 12px; color: #7d8a9c; font-size: 12px; line-height: 1.4; }
+.address-search-status--error { color: #c53040; }
 .toast { pointer-events: auto; bottom: 88px; }
 .main-content > .tourist-mode-entry { margin: 0 16px 10px; }
 .tourist-mode-button {
@@ -318,8 +321,8 @@ body[data-theme="dark"] .tourist-mode-copy small { color: #a6b8aa; }
 .person-profile-hero p { color: #77859a; font-size: 13px; }
 .person-profile-section { padding: 14px; margin-top: 10px; border: 1px solid #e9eef4; border-radius: 14px; }
 .person-profile-section h3 { margin: 0 0 7px; color: #1d2d44; font-size: 15px; }.person-profile-section p { color: #63738a; font-size: 13px; line-height: 1.45; }
-.person-profile-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.person-profile-stat { display: grid; align-content: center; justify-items: center; gap: 4px; min-width: 0; min-height: 70px; padding: 9px 5px; border: 1px solid #e9eef4; border-radius: 14px; background: #f8faff; color: #7a899d; text-align: center; }
+.person-profile-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border-radius: 0; background: transparent; }
+.person-profile-stat { display: grid; align-content: center; justify-items: center; gap: 4px; min-width: 0; min-height: 62px; padding: 6px 4px; border: 1px solid #e9eef4; border-radius: 14px; background: #f8faff; color: #7a899d; text-align: center; }
 .person-profile-stat strong { display: inline-flex; align-items: center; gap: 4px; color: #1478ef; font-size: 18px; line-height: 1.1; }
 .person-profile-stat small { font-size: 10px; line-height: 1.2; }
 .person-profile-stat--rating strong { color: #b7791f; }
@@ -751,6 +754,8 @@ body[data-theme="dark"] .address-suggestions { background: #1e2128 !important; b
 body[data-theme="dark"] .address-suggestions button { color: #c5cbd5 !important; }
 body[data-theme="dark"] .address-suggestions button:hover { background: #262a33 !important; }
 body[data-theme="dark"] .address-suggestions small { color: #8b95a5 !important; }
+body[data-theme="dark"] .address-search-status { color: #8b95a5; }
+body[data-theme="dark"] .address-search-status--error { color: #f08080; }
 body[data-theme="dark"] .inline-location-picker { background: #1e2128 !important; border-color: #2b3038 !important; }
 body[data-theme="dark"] .confirm-map-point { background: #2786f8 !important; color: #fff !important; }
 body[data-theme="dark"] .limit-hint,
@@ -1515,6 +1520,8 @@ body:has(.detail-overlay) .bottom-nav { display: none !important; }
 .tourist-plan-place-description > span { color: #718078; font-size: 11px; }
 .tourist-place-duration { display: flex; align-items: center; gap: 8px; margin-top: 4px; color: #718078; font-size: 11px; }
 .tourist-place-duration select { min-height: 30px; padding: 4px 8px; border: 1px solid #dbe6df; border-radius: 8px; background: #fbfdfb; color: #33483e; font: inherit; }
+.tourist-place-start-time { display: flex; align-items: center; gap: 8px; margin-top: 4px; color: #718078; font-size: 11px; }
+.tourist-place-start-time input { min-height: 30px; padding: 4px 8px; border: 1px solid #dbe6df; border-radius: 8px; background: #fbfdfb; color: #33483e; font: inherit; }
 .tourist-place-picker { padding: 15px 0; margin: 8px 0 14px; border-top: 1px solid #e7ede8; border-bottom: 1px solid #e7ede8; }
 .tourist-place-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #177a56; }
 .tourist-place-picker-heading h3 { color: #33483e; font-size: 14px; }
@@ -1582,9 +1589,11 @@ body[data-theme="dark"] .tourist-plan-options button small,
 body[data-theme="dark"] .tourist-plan-time small { color: #a3b1a9; }
 body[data-theme="dark"] .tourist-plan-time-window small,
 body[data-theme="dark"] .tourist-route-timing-note,
-body[data-theme="dark"] .tourist-place-duration { color: #a3b1a9; }
+body[data-theme="dark"] .tourist-place-duration,
+body[data-theme="dark"] .tourist-place-start-time { color: #a3b1a9; }
 body[data-theme="dark"] .tourist-plan-overlap-warning { border-color: #694040; background: #342323; color: #f0aaaa; }
-body[data-theme="dark"] .tourist-place-duration select { border-color: #3a4840; background: #191e1c; color: #e7eee9; }
+body[data-theme="dark"] .tourist-place-duration select,
+body[data-theme="dark"] .tourist-place-start-time input { border-color: #3a4840; background: #191e1c; color: #e7eee9; }
 body[data-theme="dark"] .tourist-manual-stop-form { border-color: #39443e; }
 body[data-theme="dark"] .tourist-manual-stop-form h4,
 body[data-theme="dark"] .tourist-manual-stop-form > label { color: #c3d0c8; }

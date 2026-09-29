@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { moderateContent, validateAddress, moderateUrl } from '../utils/contentModeration';
-import { uploadImages, reverseGeocode } from '../api/events';
+import { uploadImages, reverseGeocode, geocodeTouristAddress } from '../api/events';
 import { findNearestCity } from '../utils/citySearch';
 import Icon from './Icon';
 import { getDefaultEventImage } from '../utils/defaultEventImages';
@@ -15,17 +15,6 @@ const CITY_CENTERS = {
   'Санкт-Петербург': { lat: 59.9343, lng: 30.3351 }
 };
 const DEFAULT_CENTER = { lat: 55.796, lng: 49.108 };
-
-const ADDRESS_SUGGESTIONS = [
-  { city: 'Казань', address: 'г. Казань, ул. Ленина, 101', district: 'Вахитовский район', lat: 55.792, lng: 49.12 },
-  { city: 'Казань', address: 'г. Казань, ул. Кремлёвская, 35', district: 'Вахитовский район', lat: 55.798, lng: 49.106 },
-  { city: 'Казань', address: 'г. Казань, Петербургская улица, 1', district: 'Вахитовский район', lat: 55.785, lng: 49.124 },
-  { city: 'Казань', address: 'г. Казань, Горкинско-Ометьевский лес', district: 'Советский район', lat: 55.82, lng: 49.12 },
-  { city: 'Москва', address: 'г. Москва, ул. Тверская, 12', district: 'Тверской район', lat: 55.761, lng: 37.609 },
-  { city: 'Москва', address: 'г. Москва, парк Горького', district: 'Якиманка', lat: 55.729, lng: 37.601 },
-  { city: 'Санкт-Петербург', address: 'г. Санкт-Петербург, Невский проспект, 28', district: 'Центральный район', lat: 59.936, lng: 30.325 },
-  { city: 'Санкт-Петербург', address: 'г. Санкт-Петербург, Новая Голландия', district: 'Адмиралтейский район', lat: 59.929, lng: 30.289 }
-];
 
 const pickerPin = L.divIcon({
   className: 'picker-pin-wrap',
@@ -116,8 +105,8 @@ const CreateEventForm = ({
     maxChatUrl: initialEvent?.maxChatUrl || '',
     description: initialEvent?.description || '',
     images: initialEvent?.images || (initialEvent?.image ? [initialEvent.image] : []),
-    lat: isOnlineInitially ? null : (initialEvent?.lat ?? center.lat),
-    lng: isOnlineInitially ? null : (initialEvent?.lng ?? center.lng),
+    lat: isOnlineInitially ? null : (initialEvent?.lat ?? null),
+    lng: isOnlineInitially ? null : (initialEvent?.lng ?? null),
   });
 
   const [newFiles, setNewFiles] = useState([]);
@@ -129,10 +118,51 @@ const CreateEventForm = ({
   );
   const [submitting, setSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [addressSearchLoading, setAddressSearchLoading] = useState(false);
+  const [addressSearchError, setAddressSearchError] = useState('');
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [draftPoint, setDraftPoint] = useState(null);
   const [detectedCity, setDetectedCity] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const query = formData.address.trim();
+    if (!showSuggestions || query.length < 3 || formData.format === 'Онлайн') {
+      setAddressSuggestions([]);
+      setAddressSearchLoading(false);
+      setAddressSearchError('');
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setAddressSearchLoading(true);
+      setAddressSearchError('');
+      try {
+        const selectedCity = String(formData.city || city || '').trim();
+        const queryIncludesCity = selectedCity && query.toLocaleLowerCase().includes(selectedCity.toLocaleLowerCase());
+        const result = await geocodeTouristAddress(
+          queryIncludesCity || !selectedCity ? query : `${query}, ${selectedCity}`
+        );
+        if (active) {
+          setAddressSuggestions(Array.isArray(result.addresses) ? result.addresses : []);
+        }
+      } catch (error) {
+        if (active) {
+          setAddressSuggestions([]);
+          setAddressSearchError(error.message || 'Не удалось найти адрес');
+        }
+      } finally {
+        if (active) setAddressSearchLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [formData.address, formData.city, formData.format, showSuggestions, city, isOnlineInitially]);
 
   const setField = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -152,12 +182,11 @@ const CreateEventForm = ({
           lng: null,
         };
       }
-      const fallback = cityCoords || CITY_CENTERS[city] || DEFAULT_CENTER;
       return {
         ...prev,
         format: 'Офлайн',
-        lat: prev.lat ?? fallback.lat,
-        lng: prev.lng ?? fallback.lng,
+        lat: prev.lat ?? null,
+        lng: prev.lng ?? null,
         city: prev.city || city,
       };
     });
@@ -185,17 +214,33 @@ const CreateEventForm = ({
   };
 
   const chooseSuggestion = (suggestion) => {
+    const nearest = findNearestCity(suggestion.lat, suggestion.lng, 100);
     setFormData((prev) => ({
       ...prev,
-      address: suggestion.address,
-      district: suggestion.district,
-      city: suggestion.city || prev.city,
+      address: suggestion.label,
+      district: nearest?.city.regionName || nearest?.city.name || prev.district,
+      city: nearest?.city.name || prev.city,
       lat: suggestion.lat,
       lng: suggestion.lng
     }));
     setDraftPoint({ lat: suggestion.lat, lng: suggestion.lng });
     setShowMapPicker(true);
     setShowSuggestions(false);
+    setAddressSuggestions([]);
+    setAddressSearchError('');
+  };
+
+  const handleAddressChange = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: value,
+      lat: null,
+      lng: null,
+    }));
+    setErrors((prev) => (prev.address ? { ...prev, address: null } : prev));
+    setDraftPoint(null);
+    setDetectedCity(null);
+    setShowSuggestions(true);
   };
 
   const chooseImage = (event) => {
@@ -283,9 +328,25 @@ const CreateEventForm = ({
 
     if (formData.format === 'Офлайн') {
       if (!formData.address.trim()) nextErrors.address = 'Укажите место';
+      else if (
+        formData.lat == null ||
+        formData.lng == null ||
+        !Number.isFinite(Number(formData.lat)) ||
+        !Number.isFinite(Number(formData.lng)) ||
+        Number(formData.lat) < -90 ||
+        Number(formData.lat) > 90 ||
+        Number(formData.lng) < -180 ||
+        Number(formData.lng) > 180
+      ) {
+        nextErrors.address = 'Выберите найденный адрес или укажите точку на карте';
+      }
       else {
-        const addressCheck = validateAddress(formData.address);
-        if (!addressCheck.isClean) nextErrors.address = addressCheck.reason;
+        const addressContentCheck = moderateContent(formData.address);
+        if (!addressContentCheck.isClean) nextErrors.address = addressContentCheck.reason;
+        else {
+          const addressCheck = validateAddress(formData.address);
+          if (!addressCheck.isClean) nextErrors.address = addressCheck.reason;
+        }
       }
     }
 
@@ -489,19 +550,27 @@ const CreateEventForm = ({
                 value={formData.address}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => window.setTimeout(() => setShowSuggestions(false), 120)}
-                onChange={(e) => { setField('address', e.target.value); setShowSuggestions(true); }}
-                placeholder="Начните вводить адрес"
+                onChange={(e) => handleAddressChange(e.target.value)}
+                placeholder="Введите адрес, место или заведение"
               />
               {showSuggestions && (
                 <div className="address-suggestions">
-                  {ADDRESS_SUGGESTIONS
-                    .filter((item) => item.city === formData.city && item.address.toLowerCase().includes(formData.address.toLowerCase()))
-                    .map((item) => (
-                      <button type="button" key={item.address} onMouseDown={() => chooseSuggestion(item)}>
+                  {addressSuggestions.map((item) => (
+                      <button type="button" key={`${item.lat},${item.lng}`} onMouseDown={(event) => {
+                        event.preventDefault();
+                        chooseSuggestion(item);
+                      }}>
                         <Icon name="pin" size={17} />
-                        <span>{item.address}<small>{item.district}</small></span>
+                        <span>{item.label}</span>
                       </button>
                     ))}
+                  {addressSearchLoading && <p className="address-search-status">Ищем адрес…</p>}
+                  {!addressSearchLoading && addressSearchError && (
+                    <p className="address-search-status address-search-status--error">{addressSearchError}</p>
+                  )}
+                  {!addressSearchLoading && !addressSearchError && formData.address.trim().length >= 3 && !addressSuggestions.length && (
+                    <p className="address-search-status">Ничего не найдено. Попробуйте уточнить запрос или укажите точку на карте.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -511,7 +580,10 @@ const CreateEventForm = ({
               type="button"
               className="map-picker-btn map-picker-full"
               onClick={() => {
-                setDraftPoint((point) => point || { lat: formData.lat, lng: formData.lng });
+                setDraftPoint((point) => point || {
+                  lat: formData.lat ?? center.lat,
+                  lng: formData.lng ?? center.lng,
+                });
                 setShowMapPicker((value) => !value);
               }}
             >
@@ -523,7 +595,10 @@ const CreateEventForm = ({
                 <div className="picker-map">
                   <MapContainer
                     key={`${draftPoint?.lat || formData.lat}-${draftPoint?.lng || formData.lng}`}
-                    center={[draftPoint?.lat || formData.lat, draftPoint?.lng || formData.lng]}
+                    center={[
+                      draftPoint?.lat ?? formData.lat ?? center.lat,
+                      draftPoint?.lng ?? formData.lng ?? center.lng,
+                    ]}
                     zoom={14}
                     scrollWheelZoom
                   >
@@ -544,7 +619,7 @@ const CreateEventForm = ({
                 </button>
               </div>
             )}
-            <p className="hint-text-with-icon">Выберите адрес из подсказки или нажмите на нужное место на карте.</p>
+            <p className="hint-text-with-icon">Введите место и выберите адрес из результатов поиска или отметьте точку на карте.</p>
           </div>
         )}
 
@@ -615,15 +690,15 @@ const CreateEventForm = ({
 
         <div className="form-group">
           <label>Стоимость</label>
-          <div className="format-segmented">
-            {['Бесплатно', 'Платно'].map((price) => (
+          <div className="format-segmented event-price-options">
+            {['Бесплатно', 'Платно', 'Пушкинская карта'].map((price) => (
               <button
                 type="button"
                 key={price}
                 className={formData.price === price ? 'active' : ''}
                 onClick={() => {
                   setField('price', price);
-                  if (price === 'Бесплатно') setField('priceAmount', '');
+                  if (price !== 'Платно') setField('priceAmount', '');
                 }}
               >
                 {price}

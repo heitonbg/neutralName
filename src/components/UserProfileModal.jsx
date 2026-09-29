@@ -268,8 +268,8 @@ export default function UserProfileModal({
             <strong>
               <Icon name="star" size={15} filled /> {averageOrganizerRating}
             </strong>
-            <small>
-              Рейтинг организатора{organizerRatingCount ? ` · ${organizerRatingCount}` : ''}
+            <small title="Рейтинг организатора">
+              Рейтинг{organizerRatingCount ? ` · ${organizerRatingCount}` : ''}
             </small>
           </div>
           <div className="person-profile-stat">

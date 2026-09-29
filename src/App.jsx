@@ -236,6 +236,10 @@ function App() {
 
   const requestDelete = (event) => {
     if (!isEventOwner(event, userId)) return;
+    if (getEventStatus(event) === 'past') {
+      pushToast('Завершённое событие нельзя удалить', 'error');
+      return;
+    }
     setDeleteError('');
     setPendingDelete(event);
   };

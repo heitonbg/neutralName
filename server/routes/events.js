@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'node:path';
 import { unlink } from 'node:fs/promises';
 import db from '../db/sqliteDatabase.js';
-import { moderateContent, validateAddress } from '../utils/moderation.js';
+import { moderateContent } from '../utils/moderation.js';
 import { notifyUser } from '../bot.js';
 import { scheduleEventReminder, cancelEventReminder } from '../reminders.js';
 import { uploadDir } from '../utils/uploadStorage.js';
@@ -191,15 +191,12 @@ router.post('/', (req, res) => {
   if (!descCheck.isClean) return res.status(400).json({ error: descCheck.reason });
 
   if (format !== 'Онлайн') {
+    if (!String(address || '').trim()) {
+      return res.status(400).json({ error: 'Укажите место проведения' });
+    }
     if (!hasValidCoordinates(req.body.lat, req.body.lng)) {
       return res.status(400).json({ error: 'Выберите найденный адрес или укажите точку на карте' });
     }
-    const addressContentCheck = moderateContent(address || '');
-    if (!addressContentCheck.isClean) {
-      return res.status(400).json({ error: addressContentCheck.reason });
-    }
-    const addrCheck = validateAddress(address || '');
-    if (!addrCheck.isClean) return res.status(400).json({ error: addrCheck.reason });
   }
 
   const { images, image } = resolveEventImages(req.body);
@@ -273,12 +270,6 @@ router.put('/:id', (req, res) => {
     if (!nextAddress) {
       return res.status(400).json({ error: 'Укажите место проведения' });
     }
-    const addressContentCheck = moderateContent(nextAddress);
-    if (!addressContentCheck.isClean) {
-      return res.status(400).json({ error: addressContentCheck.reason });
-    }
-    const c = validateAddress(nextAddress);
-    if (!c.isClean) return res.status(400).json({ error: c.reason });
   }
 
   const hasImagesPatch = Array.isArray(req.body.images) || typeof req.body.image === 'string';

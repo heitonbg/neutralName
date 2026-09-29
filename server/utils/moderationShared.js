@@ -63,7 +63,7 @@ const LATIN_TO_CYRILLIC = {
   '5': 'с', '6': 'б', '7': 'т', '8': 'в', '@': 'а', '$': 'с',
 };
 
-const compact = (text, letterMap, allowedLetters) =>
+const normalizeWords = (text, letterMap) =>
   text
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -71,23 +71,46 @@ const compact = (text, letterMap, allowedLetters) =>
     .replace(/ё/g, 'е')
     .replace(/[a-z0-9@$]/g, (char) => letterMap[char] || char)
     .replace(/([а-я])\1+/g, '$1')
-    .replace(new RegExp(`[^${allowedLetters}]+`, 'g'), '');
+    .match(/[a-zа-я]+/g) || [];
 
 const normalizeForModeration = (text) => [
-  compact(text, CONFUSABLES, 'а-я'),
-  compact(text, LATIN_TO_CYRILLIC, 'а-я'),
+  normalizeWords(text, CONFUSABLES),
+  normalizeWords(text, LATIN_TO_CYRILLIC),
 ];
 
-const normalizedBannedWords = [...new Set(
-  BANNED_WORDS.flatMap(normalizeForModeration)
-)].filter((word) => word.length >= 3).sort((a, b) => b.length - a.length);
+const normalizedBannedEntries = [...new Map(
+  BANNED_WORDS.flatMap((word) => normalizeForModeration(word))
+    .filter((words) => words.length && words.join('').length >= 3 && words.every((part) => part.length >= 2))
+    .map((words) => [words.join(' '), words])
+).values()].sort((a, b) => b.join('').length - a.join('').length);
+
+const containsBannedEntry = (textWords, bannedWords) => {
+  if (bannedWords.length === 1) {
+    if (textWords.includes(bannedWords[0])) return true;
+
+    for (let start = 0; start < textWords.length; start += 1) {
+      let run = '';
+      for (let end = start; end < textWords.length && textWords[end].length === 1; end += 1) {
+        run += textWords[end];
+        if (run.includes(bannedWords[0])) return true;
+      }
+    }
+    return false;
+  }
+
+  for (let start = 0; start <= textWords.length - bannedWords.length; start += 1) {
+    if (bannedWords.every((word, offset) => textWords[start + offset] === word)) {
+      return true;
+    }
+  }
+  return false;
+};
 
 export const SUSPICIOUS_PATTERNS = [
   /у\s*б\s*и\s*й\s*с\s*т\s*в/i,
   /у6ийство/i,
   /уб!йство/i,
-  /[a-z]*k[i1]ll[a-z]*/i,
-  /hate|murder|kill|drug/i,
+  /\b(?:hate|murder|kill|drug)\b/i,
 ];
 
 export const DANGEROUS_ADDRESS_PATTERNS = [
@@ -105,8 +128,8 @@ export const moderateContent = (text) => {
   }
 
   const normalizedTexts = normalizeForModeration(text);
-  for (const word of normalizedBannedWords) {
-    if (normalizedTexts.some((normalizedText) => normalizedText.includes(word))) {
+  for (const words of normalizedTexts) {
+    if (normalizedBannedEntries.some((entry) => containsBannedEntry(words, entry))) {
       return { isClean: false, reason: 'Текст содержит запрещённый контент' };
     }
   }

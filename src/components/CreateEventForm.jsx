@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { moderateContent, validateAddress, moderateUrl } from '../utils/contentModeration';
+import { moderateContent, moderateUrl } from '../utils/contentModeration';
 import { uploadImages, reverseGeocode, geocodeTouristAddress } from '../api/events';
 import { findNearestCity } from '../utils/citySearch';
 import Icon from './Icon';
@@ -30,9 +30,23 @@ function PointSelector({ point, onSelect }) {
 
 const splitDateTime = (event) => {
   if (!event) return { date: '', time: '' };
+
+  if (event.startAt) {
+    const startAt = new Date(event.startAt);
+    if (!Number.isNaN(startAt.getTime())) {
+      const pad = (value) => String(value).padStart(2, '0');
+      return {
+        date: `${startAt.getFullYear()}-${pad(startAt.getMonth() + 1)}-${pad(startAt.getDate())}`,
+        time: `${pad(startAt.getHours())}:${pad(startAt.getMinutes())}`
+      };
+    }
+  }
+
+  const dateString = String(event.date || '');
+  const match = dateString.match(/^(\d{4}-\d{2}-\d{2})(?:[T,\s]+(\d{1,2}:\d{2}))?/);
+  if (match) return { date: match[1], time: event.time || match[2] || '' };
   if (event.date && event.time) return { date: event.date, time: event.time };
-  const m = String(event.date || '').match(/^(\d{4}-\d{2}-\d{2}),?\s*(\d{2}:\d{2})/);
-  if (m) return { date: m[1], time: m[2] };
+
   return { date: '', time: '' };
 };
 
@@ -339,14 +353,6 @@ const CreateEventForm = ({
         Number(formData.lng) > 180
       ) {
         nextErrors.address = 'Выберите найденный адрес или укажите точку на карте';
-      }
-      else {
-        const addressContentCheck = moderateContent(formData.address);
-        if (!addressContentCheck.isClean) nextErrors.address = addressContentCheck.reason;
-        else {
-          const addressCheck = validateAddress(formData.address);
-          if (!addressCheck.isClean) nextErrors.address = addressCheck.reason;
-        }
       }
     }
 

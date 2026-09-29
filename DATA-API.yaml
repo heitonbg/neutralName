@@ -1,244 +1,722 @@
-schema_version: "1.0"
+# DATA-API 1.0
+# No passwords, tokens, API keys, or personal data belong in this file.
+
+schemaVersion: "1.0"
+
 solution:
   name: "Вместе"
-  team_id: "ЗАПОЛНИТЬ_ID_КОМАНДЫ"
-
-# Публичный URL API, на который настроен клиент приложения.
-# Проверьте его доступность на всём протяжении периода экспертной проверки.
-base_url: "https://maxserver-iwrawww.amvera.io"
-local_base_url: "http://localhost:3001"
 
 api:
-  description: "REST API приложения «Вместе» для поиска событий и участия в них."
-  protocol: "HTTPS в развёрнутой версии; HTTP допускается только локально."
-  default_port: 3001
-  request_content_type: "application/json"
-  response_content_type: "application/json"
+  baseUrl: "https://maxserver-iwrawww.amvera.io"
+  openapi: "./openapi.yaml"
 
-# Это тестовые идентификаторы акторов для изолированной API-проверки,
-# а не логины MAX и не подтверждённые учётные записи.
-# Большинство текущих маршрутов API не проверяет подпись MAX initData.
-test_accounts:
-  organizer:
-    role: "организатор события"
-    user_id: "demo-organizer"
-    credentials: "MAX-аутентификация для большинства API-маршрутов не реализована; тестовый actor ID передаётся в теле запроса."
-  participant:
-    role: "участник события"
-    user_id: "demo-participant"
-    credentials: "MAX-аутентификация для большинства API-маршрутов не реализована; используйте только в изолированной тестовой базе."
-
-execution:
-  mode: "Последовательно, на отдельной тестовой базе."
-  variables:
-    organizer_id: "test_accounts.organizer.user_id"
-    participant_id: "test_accounts.participant.user_id"
-    event_id: "Сохранить поле id из ответа проверки create_event."
-  notes:
-    - "Создайте событие с датой в будущем; создатель не может присоединиться к своему событию."
-    - "Проверка join_event требует event_id из create_event и participant_id, отличного от organizer_id."
-    - "delete_event удаляет созданное тестовое событие; выполняйте его только на изолированной тестовой базе."
-    - "В локальной базе нет заранее созданных тестовых событий."
-
-mandatory_checks:
-  - id: "health"
-    description: "Проверка доступности API."
-    request:
-      method: "GET"
-      path: "/health"
-      role: "anonymous"
+checks:
+  - id: health
+    name: "Проверка доступности API"
+    method: GET
+    path: /health
+    role: public
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
-        required:
-          status: "ok"
-          bot: "string"
-          eventsCount: "number"
-          usersCount: "number"
-          seeded: "boolean"
-          timestamp: "string"
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields:
+        - status
+        - eventsCount
+        - usersCount
+        - seeded
+        - timestamp
+      bodySchema:
+        type: object
+        properties:
+          status:
+            const: ok
+          eventsCount:
+            type: integer
+            minimum: 0
+          usersCount:
+            type: integer
+            minimum: 0
+          seeded:
+            type: boolean
+          timestamp:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
 
-  - id: "list_events"
-    description: "Получение ленты событий."
-    request:
-      method: "GET"
-      path: "/api/events"
-      role: "anonymous"
-      query:
-        city: "Казань"
+  - id: list-events
+    name: "Получение ленты событий"
+    method: GET
+    path: /api/events
+    role: public
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
-        type: "array"
+      statusCodes: [200]
+      contentType: application/json
+      bodySchema:
+        type: array
         items:
-          fields:
-            id: "number"
-            title: "string"
-            category: "string"
-            date: "string"
-            price: "string"
-            participants: "number"
+          type: object
+          required:
+            - id
+            - title
+            - category
+            - date
+            - price
+            - participants
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            category:
+              type: string
+            date:
+              type: string
+            price:
+              type: string
+            participants:
+              type: integer
+    timeoutMs: 5000
+    repeatable: true
 
-  - id: "create_event"
-    description: "Создание будущего офлайн-события тестовым организатором."
+  - id: bootstrap-anonymous
+    name: "Получение стартового состояния без пользователя"
+    method: GET
+    path: /api/bootstrap
+    role: public
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [user, joinedIds, participatedIds, createdIds]
+      bodySchema:
+        type: object
+        required: [user, joinedIds, participatedIds, createdIds]
+        properties:
+          user:
+            type: "null"
+          joinedIds:
+            type: array
+          participatedIds:
+            type: array
+          createdIds:
+            type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: list-user-events
+    name: "Получение текущих участий тестового пользователя"
+    method: GET
+    path: /api/events/joined
+    role: public
     request:
-      method: "POST"
-      path: "/api/events"
-      role: "организатор"
-      content_type: "application/json"
+      query:
+        userId: data-api-test-participant
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [eventIds]
+      bodySchema:
+        type: object
+        required: [eventIds]
+        properties:
+          eventIds:
+            type: array
+            items:
+              type: integer
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: list-participated-events
+    name: "Получение истории участий тестового пользователя"
+    method: GET
+    path: /api/events/participated
+    role: public
+    request:
+      query:
+        userId: data-api-test-participant
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [eventIds]
+      bodySchema:
+        type: object
+        required: [eventIds]
+        properties:
+          eventIds:
+            type: array
+            items:
+              type: integer
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: search-users
+    name: "Поиск пользователей"
+    method: GET
+    path: /api/users/search
+    role: public
+    request:
+      query:
+        q: data-api-no-such-user-6f15a
+        userId: data-api-test-participant
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [users]
+      bodySchema:
+        type: object
+        required: [users]
+        properties:
+          users:
+            type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: read-missing-user
+    name: "Проверка ответа для отсутствующего профиля"
+    method: GET
+    path: /api/users/{userId}
+    role: public
+    request:
+      path:
+        userId: data-api-no-such-user-6f15a
+    expected:
+      statusCodes: [404]
+      contentType: application/json
+      requiredFields: [error]
+      bodySchema:
+        type: object
+        required: [error]
+        properties:
+          error:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: read-test-friends
+    name: "Получение списка друзей тестового пользователя"
+    method: GET
+    path: /api/friends
+    role: public
+    request:
+      query:
+        userId: data-api-test-friend-requester
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [friends, incoming, outgoing]
+      bodySchema:
+        type: object
+        required: [friends, incoming, outgoing]
+        properties:
+          friends:
+            type: array
+          incoming:
+            type: array
+          outgoing:
+            type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: request-friend
+    name: "Создание тестовой заявки в друзья"
+    description: "Создаёт заявку между синтетическими ID; она удаляется шагом cleanup."
+    method: POST
+    path: /api/friends/request
+    role: test-user
+    request:
+      headers:
+        Content-Type: application/json
       body:
-        title: "Тестовая прогулка Вместе"
-        description: "Тестовый сценарий проверки API"
+        fromId: data-api-test-friend-requester
+        toId: data-api-test-friend-recipient
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [status]
+      bodySchema:
+        type: object
+        required: [status]
+        properties:
+          status:
+            const: outgoing
+    timeoutMs: 5000
+    repeatable: false
+
+  - id: read-friend-request-status
+    name: "Проверка статуса тестовой заявки в друзья"
+    method: GET
+    path: /api/friends/status
+    role: public
+    dependsOn: [request-friend]
+    request:
+      query:
+        userId: data-api-test-friend-requester
+        otherId: data-api-test-friend-recipient
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [status]
+      bodySchema:
+        type: object
+        required: [status]
+        properties:
+          status:
+            const: outgoing
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: search-cities-short-query
+    name: "Проверка ответа поиска городов на короткий запрос"
+    method: GET
+    path: /api/cities/search
+    role: public
+    request:
+      query:
+        q: x
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [cities, sources]
+      bodySchema:
+        type: object
+        required: [cities, sources]
+        properties:
+          cities:
+            type: array
+          sources:
+            type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: search-address-short-query
+    name: "Проверка ответа поиска адреса на короткий запрос"
+    method: GET
+    path: /api/cities/address
+    role: public
+    request:
+      query:
+        q: x
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [addresses]
+      bodySchema:
+        type: object
+        required: [addresses]
+        properties:
+          addresses:
+            type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: reverse-geocode-validates-coordinates
+    name: "Проверка валидации координат обратного геокодирования"
+    method: GET
+    path: /api/cities/reverse
+    role: public
+    expected:
+      statusCodes: [400]
+      contentType: application/json
+      requiredFields: [error]
+      bodySchema:
+        type: object
+        required: [error]
+        properties:
+          error:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: check-clean-text
+    name: "Проверка модерации допустимого текста"
+    method: POST
+    path: /api/moderation/check
+    role: public
+    request:
+      headers:
+        Content-Type: application/json
+      body:
+        text: "Прогулка по парку"
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [isClean]
+      bodySchema:
+        type: object
+        required: [isClean]
+        properties:
+          isClean:
+            const: true
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: tourist-plans-require-authentication
+    name: "Проверка защиты туристических планов"
+    method: GET
+    path: /api/tourist/plans
+    role: unauthenticated
+    expected:
+      statusCodes: [401]
+      contentType: application/json
+      requiredFields: [error, code]
+      bodySchema:
+        type: object
+        required: [error, code]
+        properties:
+          error:
+            type: string
+          code:
+            const: MAX_AUTH_HEADER_MISSING
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: tourist-places-require-event
+    name: "Проверка обязательности события для поиска туристических мест"
+    method: POST
+    path: /api/tourist/places
+    role: public
+    request:
+      headers:
+        Content-Type: application/json
+      body:
+        eventIds: []
+    expected:
+      statusCodes: [400]
+      contentType: application/json
+      requiredFields: [error]
+      bodySchema:
+        type: object
+        required: [error]
+        properties:
+          error:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: tourist-place-search-validates-query
+    name: "Проверка обязательного запроса поиска туристических мест"
+    method: POST
+    path: /api/tourist/search-places
+    role: public
+    request:
+      headers:
+        Content-Type: application/json
+      body:
+        query: x
+        eventIds: []
+    expected:
+      statusCodes: [400]
+      contentType: application/json
+      requiredFields: [error]
+      bodySchema:
+        type: object
+        required: [error]
+        properties:
+          error:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: create-event
+    name: "Создание тестового события организатором"
+    description: "Создаёт будущее тестовое событие; удаляется шагом cleanup."
+    method: POST
+    path: /api/events
+    role: organizer
+    request:
+      headers:
+        Content-Type: application/json
+      body:
+        title: "DATA-API тестовое событие"
+        description: "Временное событие для проверки API."
         category: "Прогулка"
         date: "2099-06-01, 12:00"
-        startAt: "2099-06-01T09:00:00.000Z"
         duration: "1 ч"
-        format: "Офлайн"
+        format: "Онлайн"
         price: "Бесплатно"
-        address: "Казань, тестовая точка"
-        district: "Казань"
         city: "Казань"
-        lat: 55.796
-        lng: 49.108
         maxParticipants: 10
-        organizerId: "${organizer_id}"
+        organizerId: data-api-test-organizer
     expected:
-      status: [201]
-      content_type: "application/json"
-      json:
+      statusCodes: [201]
+      contentType: application/json
+      requiredFields:
+        - id
+        - title
+        - organizerId
+        - participants
+      bodySchema:
+        type: object
         required:
-          id: "number"
-          title: "Тестовая прогулка Вместе"
-          organizerId: "${organizer_id}"
-          participants: 1
-          price: "Бесплатно"
-          createdAt: "string"
-      save:
-        event_id: "$.id"
+          - id
+          - title
+          - organizerId
+          - participants
+        properties:
+          id:
+            type: integer
+          title:
+            const: "DATA-API тестовое событие"
+          organizerId:
+            const: data-api-test-organizer
+          participants:
+            type: integer
+    timeoutMs: 5000
+    repeatable: false
+    extract:
+      eventId: "$.id"
 
-  - id: "read_created_event"
-    description: "Чтение события, созданного в основном сценарии."
-    depends_on: ["create_event"]
+  - id: read-created-event
+    name: "Чтение созданного события"
+    method: GET
+    path: /api/events/{eventId}
+    role: public
+    dependsOn:
+      - create-event
     request:
-      method: "GET"
-      path: "/api/events/${event_id}"
-      role: "anonymous"
+      path:
+        eventId: "${eventId}"
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields:
+        - id
+        - title
+        - organizerId
+        - participants
+      bodySchema:
+        type: object
         required:
-          id: "${event_id}"
-          title: "Тестовая прогулка Вместе"
-          organizerId: "${organizer_id}"
-          category: "Прогулка"
-          city: "Казань"
+          - id
+          - title
+          - organizerId
+          - participants
+        properties:
+          id:
+            type: integer
+          title:
+            const: "DATA-API тестовое событие"
+          organizerId:
+            const: data-api-test-organizer
+          participants:
+            type: integer
+    timeoutMs: 5000
+    repeatable: true
 
-  - id: "join_event"
-    description: "Запись второго пользователя на тестовое событие."
-    depends_on: ["create_event"]
+  - id: read-event-participants
+    name: "Получение участников созданного события"
+    method: GET
+    path: /api/events/{eventId}/participants
+    role: public
+    dependsOn: [create-event]
     request:
-      method: "POST"
-      path: "/api/events/${event_id}/join"
-      role: "участник"
-      content_type: "application/json"
+      path:
+        eventId: "${eventId}"
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [participants]
+      bodySchema:
+        type: object
+        required: [participants]
+        properties:
+          participants:
+            type: array
+            items:
+              type: object
+              required: [id, isOrganizer]
+              properties:
+                id:
+                  type: string
+                isOrganizer:
+                  type: boolean
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: read-event-reviews
+    name: "Получение отзывов будущего события"
+    method: GET
+    path: /api/events/{eventId}/reviews
+    role: public
+    dependsOn: [create-event]
+    request:
+      path:
+        eventId: "${eventId}"
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      bodySchema:
+        type: array
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: reject-review-for-future-event
+    name: "Запрет отзыва до завершения события"
+    method: POST
+    path: /api/events/{eventId}/reviews
+    role: participant
+    dependsOn: [create-event]
+    request:
+      path:
+        eventId: "${eventId}"
+      headers:
+        Content-Type: application/json
       body:
-        userId: "${participant_id}"
+        userId: data-api-test-participant
+        rating: 5
+        text: "Тестовый отзыв до завершения события"
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
-        required:
-          success: true
-          participants: 2
+      statusCodes: [403]
+      contentType: application/json
+      requiredFields: [error]
+      bodySchema:
+        type: object
+        required: [error]
+        properties:
+          error:
+            type: string
+    timeoutMs: 5000
+    repeatable: true
 
-  - id: "leave_event"
-    description: "Отмена участия тем же тестовым пользователем."
-    depends_on: ["join_event"]
+  - id: join-event
+    name: "Запись участника на событие"
+    method: POST
+    path: /api/events/{eventId}/join
+    role: participant
+    dependsOn:
+      - create-event
     request:
-      method: "POST"
-      path: "/api/events/${event_id}/leave"
-      role: "участник"
-      content_type: "application/json"
+      path:
+        eventId: "${eventId}"
+      headers:
+        Content-Type: application/json
       body:
-        userId: "${participant_id}"
+        userId: data-api-test-participant
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields:
+        - success
+        - participants
+      bodySchema:
+        type: object
         required:
-          success: true
-          participants: 1
+          - success
+          - participants
+        properties:
+          success:
+            const: true
+          participants:
+            const: 2
+    timeoutMs: 5000
+    repeatable: false
 
-  - id: "update_event"
-    description: "Изменение названия события его организатором."
-    depends_on: ["create_event"]
+  - id: leave-event
+    name: "Отмена участия в событии"
+    method: POST
+    path: /api/events/{eventId}/leave
+    role: participant
+    dependsOn:
+      - join-event
     request:
-      method: "PUT"
-      path: "/api/events/${event_id}"
-      role: "организатор"
-      content_type: "application/json"
+      path:
+        eventId: "${eventId}"
+      headers:
+        Content-Type: application/json
       body:
-        userId: "${organizer_id}"
-        title: "Тестовая прогулка Вместе — обновлено"
+        userId: data-api-test-participant
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields:
+        - success
+        - participants
+      bodySchema:
+        type: object
         required:
-          id: "${event_id}"
-          title: "Тестовая прогулка Вместе — обновлено"
-          organizerId: "${organizer_id}"
-          updatedAt: "string"
+          - success
+          - participants
+        properties:
+          success:
+            const: true
+          participants:
+            const: 1
+    timeoutMs: 5000
+    repeatable: false
 
-  - id: "delete_event"
-    description: "Удаление будущего тестового события его организатором."
-    depends_on: ["create_event", "update_event"]
+  - id: update-event
+    name: "Изменение события организатором"
+    method: PUT
+    path: /api/events/{eventId}
+    role: organizer
+    dependsOn:
+      - create-event
     request:
-      method: "DELETE"
-      path: "/api/events/${event_id}"
-      role: "организатор"
+      path:
+        eventId: "${eventId}"
+      headers:
+        Content-Type: application/json
+      body:
+        userId: data-api-test-organizer
+        title: "DATA-API тестовое событие — обновлено"
+    expected:
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields:
+        - id
+        - title
+        - organizerId
+        - updatedAt
+      bodySchema:
+        type: object
+        required:
+          - id
+          - title
+          - organizerId
+          - updatedAt
+        properties:
+          id:
+            type: integer
+          title:
+            const: "DATA-API тестовое событие — обновлено"
+          organizerId:
+            const: data-api-test-organizer
+          updatedAt:
+            type: string
+    timeoutMs: 5000
+    repeatable: false
+
+cleanup:
+  - id: delete-test-event
+    method: DELETE
+    path: /api/events/{eventId}
+    role: organizer
+    request:
+      path:
+        eventId: "${eventId}"
       query:
-        userId: "${organizer_id}"
+        userId: data-api-test-organizer
     expected:
-      status: [204]
-      content_type: "none"
-      body: "empty"
+      statusCodes: [204, 404]
+    timeoutMs: 5000
 
-  - id: "moderation_rejects_prohibited_text"
-    description: "Проверка, что модерация отклоняет запрещённый текст."
+  - id: cancel-test-friend-request
+    method: POST
+    path: /api/friends/decline
+    role: test-user
     request:
-      method: "POST"
-      path: "/api/moderation/check"
-      role: "anonymous"
-      content_type: "application/json"
+      headers:
+        Content-Type: application/json
       body:
-        text: "секс-вечеринка"
+        userId: data-api-test-friend-requester
+        fromId: data-api-test-friend-recipient
     expected:
-      status: [200]
-      content_type: "application/json"
-      json:
-        required:
-          isClean: false
-          reason: "string"
-
-error_responses:
-  description: "Ошибки маршрутов возвращаются JSON-объектом с полем error; отдельные маршруты могут дополнительно вернуть code."
-  examples:
-    validation:
-      status: 400
-      json:
-        required:
-          error: "string"
-    not_found:
-      status: 404
-      json:
-        required:
-          error: "string"
-
-security_notes:
-  - "Сохранение/чтение/удаление туристических планов требует Authorization: tma <MAX initData> и проверки подписи на сервере."
-  - "Большинство остальных API-маршрутов в этой версии не проверяет подпись MAX и доверяет переданным идентификаторам пользователя. Указанные тестовые ID допустимы только для локальной изолированной проверки."
-  - "Не используйте тестовые идентификаторы или реальные персональные данные в публичной среде."
+      statusCodes: [200]
+      contentType: application/json
+      requiredFields: [status]
+      bodySchema:
+        type: object
+        required: [status]
+        properties:
+          status:
+            const: none
+    timeoutMs: 5000

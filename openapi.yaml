@@ -1,0 +1,666 @@
+openapi: 3.1.0
+info:
+  title: Вместе API
+  version: 1.0.0
+  description: >-
+    Минимальное описание маршрутов, покрытых обязательными проверками
+    DATA-API 1.0. Идентификаторы userId и organizerId в этих маршрутах
+    являются передаваемыми данными и сами по себе не обеспечивают аутентификацию.
+servers:
+  - url: https://maxserver-iwrawww.amvera.io
+paths:
+  /health:
+    get:
+      summary: Проверка доступности API
+      responses:
+        "200":
+          description: API доступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/events:
+    get:
+      summary: Получение ленты событий
+      responses:
+        "200":
+          description: Список событий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      summary: Создание события
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventCreate"
+      responses:
+        "201":
+          description: Событие создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Некорректные данные события
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Получение события
+      responses:
+        "200":
+          description: Событие найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Изменение события
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        "200":
+          description: Событие обновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "403":
+          description: Изменение запрещено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Удаление события организатором
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Событие удалено
+        "403":
+          description: Удаление запрещено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events/{eventId}/join:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      summary: Запись пользователя на событие
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventParticipation"
+      responses:
+        "200":
+          description: Пользователь записан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipationResult"
+        "400":
+          description: Запись невозможна
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events/{eventId}/leave:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      summary: Отмена участия в событии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventParticipation"
+      responses:
+        "200":
+          description: Участие отменено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipationResult"
+        "400":
+          description: Пользователь не участвует
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/bootstrap:
+    get:
+      summary: Получение стартового состояния приложения
+      responses:
+        "200":
+          description: Профиль и идентификаторы событий пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, joinedIds, participatedIds, createdIds]
+
+  /api/events/joined:
+    get:
+      summary: Получение текущих участий пользователя
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Идентификаторы событий, в которых пользователь участвует
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eventIds]
+                properties:
+                  eventIds:
+                    type: array
+                    items:
+                      type: integer
+
+  /api/events/participated:
+    get:
+      summary: Получение истории участий пользователя
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Идентификаторы событий, в которых пользователь участвовал
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eventIds]
+
+  /api/events/{eventId}/participants:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Получение списка участников события
+      responses:
+        "200":
+          description: Участники и организатор
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [participants]
+                properties:
+                  participants:
+                    type: array
+
+  /api/events/{eventId}/reviews:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Получение отзывов о событии
+      responses:
+        "200":
+          description: Список отзывов; для будущего события пуст
+          content:
+            application/json:
+              schema:
+                type: array
+        "404":
+          description: Событие не найдено
+    post:
+      summary: Добавление отзыва о завершённом событии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, rating, text]
+      responses:
+        "201":
+          description: Отзыв добавлен
+        "403":
+          description: Событие ещё не завершено или отзыв запрещён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/users/search:
+    get:
+      summary: Поиск пользователей
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Найденные пользователи
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+
+  /api/users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Получение профиля пользователя
+      responses:
+        "200":
+          description: Профиль найден
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/friends:
+    get:
+      summary: Получение друзей и заявок пользователя
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Друзья, входящие и исходящие заявки
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [friends, incoming, outgoing]
+        "400":
+          description: Не указан пользователь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/friends/request:
+    post:
+      summary: Создание заявки в друзья
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromId, toId]
+      responses:
+        "200":
+          description: Заявка создана либо связь уже существует
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+        "400":
+          description: Некорректные идентификаторы
+
+  /api/friends/status:
+    get:
+      summary: Получение статуса дружбы
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: otherId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Статус отношений пользователей
+
+  /api/friends/decline:
+    post:
+      summary: Отклонение или отмена заявки в друзья
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, fromId]
+      responses:
+        "200":
+          description: Заявка отклонена или отменена
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+
+  /api/cities/search:
+    get:
+      summary: Поиск городов
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Подходящие города и использованные источники
+
+  /api/cities/address:
+    get:
+      summary: Поиск адреса
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Найденные адреса
+        "502":
+          description: Сервис геокодирования недоступен
+        "504":
+          description: Тайм-аут сервиса геокодирования
+
+  /api/cities/reverse:
+    get:
+      summary: Обратное геокодирование координат
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Адрес по координатам
+        "400":
+          description: Отсутствующие или некорректные координаты
+
+  /api/moderation/check:
+    post:
+      summary: Проверка текста модерацией
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+      responses:
+        "200":
+          description: Результат проверки текста
+
+  /api/tourist/plans:
+    get:
+      summary: Получение сохранённых туристических планов
+      security:
+        - maxInitData: []
+      responses:
+        "200":
+          description: Сохранённые планы пользователя
+        "401":
+          description: Требуется проверенная MAX initData
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/tourist/places:
+    post:
+      summary: Поиск мест рядом с событиями
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventIds]
+      responses:
+        "200":
+          description: Найденные места
+        "400":
+          description: События не выбраны
+        "404":
+          description: События не найдены
+
+  /api/tourist/search-places:
+    post:
+      summary: Поиск пользовательского места рядом с событиями
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, eventIds]
+      responses:
+        "200":
+          description: Найденные места
+        "400":
+          description: Не указаны запрос или события
+        "502":
+          description: Сервис геокодирования недоступен
+        "504":
+          description: Тайм-аут сервиса геокодирования
+
+components:
+  securitySchemes:
+    maxInitData:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "MAX initData передаётся как Authorization: tma <initData>."
+  schemas:
+    Health:
+      type: object
+      required: [status, eventsCount, usersCount, seeded, timestamp]
+      properties:
+        status:
+          type: string
+          const: ok
+        bot:
+          type: string
+        eventsCount:
+          type: integer
+          minimum: 0
+        usersCount:
+          type: integer
+          minimum: 0
+        seeded:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+    Event:
+      type: object
+      required: [id, title, category, date, price, participants]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        date:
+          type: string
+        price:
+          type: string
+        participants:
+          type: integer
+        organizerId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+
+    EventCreate:
+      type: object
+      required: [title, organizerId]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        date:
+          type: string
+        duration:
+          type: string
+        format:
+          type: string
+          enum: [Онлайн, Офлайн]
+        price:
+          type: string
+          enum: [Бесплатно, Платно, Пушкинская карта]
+        city:
+          type: string
+        maxParticipants:
+          type: integer
+        organizerId:
+          type: string
+      additionalProperties: true
+
+    EventUpdate:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        format:
+          type: string
+        duration:
+          type: string
+      additionalProperties: true
+
+    EventParticipation:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+      additionalProperties: true
+
+    ParticipationResult:
+      type: object
+      required: [success, participants]
+      properties:
+        success:
+          type: boolean
+        participants:
+          type: integer
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

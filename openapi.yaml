@@ -3,9 +3,10 @@ info:
   title: Вместе API
   version: 1.0.0
   description: >-
-    Минимальное описание маршрутов, покрытых обязательными проверками
-    DATA-API 1.0. Идентификаторы userId и organizerId в этих маршрутах
-    являются передаваемыми данными и сами по себе не обеспечивают аутентификацию.
+    HTTP-контракт маршрутов приложения. Идентификаторы userId, organizerId и
+    другие actor ID, переданные клиентом, сами по себе не обеспечивают
+    аутентификацию. Подписанные MAX initData проверяются только на операциях
+    сохранения, чтения и удаления туристических планов.
 servers:
   - url: https://maxserver-iwrawww.amvera.io
 paths:
@@ -53,6 +54,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    parameters:
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: category
+        in: query
+        schema:
+          type: string
+      - name: price
+        in: query
+        schema:
+          type: string
+      - name: viewerId
+        in: query
+        schema:
+          type: string
 
   /api/events/{eventId}:
     parameters:
@@ -97,6 +115,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "400":
+          description: Событие завершено или данные некорректны
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Удаление события организатором
       parameters:
@@ -116,6 +146,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Событие завершено и не может быть удалено
           content:
             application/json:
               schema:
@@ -194,6 +230,11 @@ paths:
   /api/bootstrap:
     get:
       summary: Получение стартового состояния приложения
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Профиль и идентификаторы событий пользователя
@@ -262,6 +303,12 @@ paths:
                 properties:
                   participants:
                     type: array
+        "404":
+          description: Событие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/events/{eventId}/reviews:
     parameters:
@@ -295,6 +342,18 @@ paths:
           description: Отзыв добавлен
         "403":
           description: Событие ещё не завершено или отзыв запрещён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Некорректный отзыв или пользователь уже оставил отзыв
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Событие не найдено
           content:
             application/json:
               schema:
@@ -339,6 +398,50 @@ paths:
           description: Профиль найден
         "404":
           description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Обновление профиля пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                photo_url:
+                  type: [string, "null"]
+                age:
+                  type: [integer, "null"]
+                  minimum: 14
+                  maximum: 120
+                city:
+                  type: string
+                  maxLength: 80
+                about:
+                  type: string
+                  maxLength: 500
+                maxLink:
+                  type: string
+                theme:
+                  type: string
+                  enum: [dark, light]
+                notificationsEnabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Обновлённый профиль
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Некорректная ссылка на профиль MAX
           content:
             application/json:
               schema:
@@ -426,6 +529,64 @@ paths:
                 type: object
                 required: [status]
 
+  /api/friends/accept:
+    post:
+      summary: Принятие входящей заявки в друзья
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, fromId]
+              properties:
+                userId:
+                  type: string
+                fromId:
+                  type: string
+      responses:
+        "200":
+          description: Заявка принята
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: friends
+        "400":
+          description: Некорректные данные или входящей заявки нет
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/friends/{friendId}:
+    parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      summary: Удаление друга
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Связь удалена или уже отсутствует
+        "400":
+          description: Не указан пользователь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /api/cities/search:
     get:
       summary: Поиск городов
@@ -504,6 +665,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    put:
+      summary: Сохранение туристического плана
+      security:
+        - maxInitData: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan:
+                  type: object
+      responses:
+        "200":
+          description: Сохранённый план
+        "400":
+          description: План имеет некорректный формат
+        "401":
+          description: Требуется проверенная MAX initData
+    delete:
+      summary: Удаление сохранённого туристического плана
+      security:
+        - maxInitData: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [city, date]
+              properties:
+                city:
+                  type: string
+                  maxLength: 80
+                date:
+                  type: string
+                  format: date
+      responses:
+        "204":
+          description: План удалён или отсутствовал
+        "400":
+          description: Не указаны город или дата
+        "401":
+          description: Требуется проверенная MAX initData
 
   /api/tourist/places:
     post:
@@ -522,6 +729,12 @@ paths:
           description: События не выбраны
         "404":
           description: События не найдены
+        "429":
+          description: Превышен лимит поиска мест
+        "502":
+          description: Сервисы поиска мест недоступны
+        "504":
+          description: Тайм-аут сервиса поиска мест
 
   /api/tourist/search-places:
     post:
@@ -538,10 +751,214 @@ paths:
           description: Найденные места
         "400":
           description: Не указаны запрос или события
+        "429":
+          description: Превышен лимит поисковых запросов
         "502":
           description: Сервис геокодирования недоступен
         "504":
           description: Тайм-аут сервиса геокодирования
+
+  /api/tourist/recommendations:
+    post:
+      summary: AI-рекомендации мест рядом с событиями
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventIds]
+              properties:
+                eventIds:
+                  type: array
+                  items:
+                    type: integer
+                kind:
+                  type: string
+                  enum: [restaurants, attractions, both]
+      responses:
+        "200":
+          description: Список рекомендованных мест
+        "400":
+          description: Не выбраны события
+        "404":
+          description: События не найдены
+        "429":
+          description: Превышен лимит запросов
+        "502":
+          description: AI-провайдер или сервис мест недоступен
+        "503":
+          description: AI-провайдер не настроен
+        "504":
+          description: Тайм-аут внешнего сервиса
+
+  /api/tourist/plan:
+    post:
+      summary: Генерация вариантов туристического плана
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [city, date]
+              properties:
+                city:
+                  type: string
+                  maxLength: 80
+                date:
+                  type: string
+                  format: date
+                query:
+                  type: string
+                  maxLength: 500
+                days:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                interests:
+                  type: array
+                  maxItems: 8
+                  items:
+                    type: string
+                budget:
+                  type: string
+                  enum: [free, any]
+                maxDistanceKm:
+                  type: number
+                  enum: [1, 3, 5, 10]
+                center:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                    lng:
+                      type: number
+      responses:
+        "200":
+          description: Два проверенных варианта плана
+        "400":
+          description: Некорректные параметры запроса
+        "422":
+          description: Не найдены события или варианты маршрута
+        "429":
+          description: Превышен лимит запросов
+        "502":
+          description: AI-провайдер недоступен
+        "503":
+          description: AI-провайдер не настроен
+        "504":
+          description: Тайм-аут AI-провайдера
+
+  /api/reports:
+    post:
+      summary: Отправка жалобы на событие
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventId, reason]
+              properties:
+                eventId:
+                  type: integer
+                reason:
+                  type: string
+                reporterId:
+                  type: string
+                comment:
+                  type: string
+      responses:
+        "201":
+          description: Жалоба зарегистрирована
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, reportId]
+        "400":
+          description: Не указано событие или основание жалобы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/upload:
+    post:
+      summary: Загрузка изображений события
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photos]
+              properties:
+                photos:
+                  type: array
+                  maxItems: 5
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "200":
+          description: Файлы загружены
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [urls]
+                properties:
+                  urls:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Файлы не переданы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Ошибка загрузки файла, недопустимый тип или превышен лимит размера
+
+  /api/upload/list:
+    get:
+      summary: Список загруженных файлов (служебный маршрут)
+      responses:
+        "200":
+          description: Имена файлов в каталоге загрузок
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files]
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: string
+
+  /uploads/{filename}:
+    get:
+      summary: Получение загруженного изображения
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Файл изображения
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Файл не найден
 
 components:
   securitySchemes:

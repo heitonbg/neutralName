@@ -169,7 +169,7 @@ const EventCard = ({
 
         <div className="event-card-meta">
           <span>
-            <Icon name="calendar" size={15} /> {formatEventDate(event.date)}
+            <Icon name="calendar" size={15} /> {formatEventDate(event)}
           </span>
           {event.duration && (
             <span>

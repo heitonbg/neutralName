@@ -166,7 +166,7 @@ const EventDetailModal = ({
           <div className="detail-top-facts">
             <div>
               <Icon name="calendar" size={26} />
-              <strong>{formatEventDate(event.date)}</strong>
+              <strong>{formatEventDate(event)}</strong>
               <small>Встреча</small>
             </div>
             {event.duration && (

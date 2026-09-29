@@ -8,6 +8,7 @@ import { notifyUser } from '../bot.js';
 import { scheduleEventReminder, cancelEventReminder } from '../reminders.js';
 import { uploadDir } from '../utils/uploadStorage.js';
 import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
+import { isEventPast } from '../utils/eventTime.js';
 
 const router = express.Router();
 const EVENT_PRICES = new Set(['Бесплатно', 'Платно', 'Пушкинская карта']);
@@ -27,34 +28,6 @@ const hasValidCoordinates = (lat, lng) => {
     Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 &&
     Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
 };
-
-function isEventPast(event) {
-  const raw = String(event?.date || '').trim();
-  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T,\s]+(\d{1,2}):(\d{2}))?/);
-  if (!m) return false;
-
-  const start = new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
-    Number(m[4] || 0),
-    Number(m[5] || 0)
-  );
-  if (Number.isNaN(start.getTime())) return false;
-
-  let durationMs = 2 * 60 * 60 * 1000;
-  const durStr = String(event.duration || '').trim();
-  if (/^\d+$/.test(durStr)) {
-    durationMs = Number(durStr) * 60 * 1000;
-  } else if (durStr) {
-    const h = Number(durStr.match(/(\d+)\s*ч/)?.[1] || 0);
-    const mm = Number(durStr.match(/(\d+)\s*мин/)?.[1] || 0);
-    const total = (h * 60 + mm) * 60 * 1000;
-    if (total > 0) durationMs = total;
-  }
-
-  return Date.now() >= start.getTime() + durationMs;
-}
 
 function resolveEventImages(body, fallbackImage) {
   const images = Array.isArray(body.images)

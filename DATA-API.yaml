@@ -1,0 +1,244 @@
+schema_version: "1.0"
+solution:
+  name: "Вместе"
+  team_id: "ЗАПОЛНИТЬ_ID_КОМАНДЫ"
+
+# Публичный URL API, на который настроен клиент приложения.
+# Проверьте его доступность на всём протяжении периода экспертной проверки.
+base_url: "https://maxserver-iwrawww.amvera.io"
+local_base_url: "http://localhost:3001"
+
+api:
+  description: "REST API приложения «Вместе» для поиска событий и участия в них."
+  protocol: "HTTPS в развёрнутой версии; HTTP допускается только локально."
+  default_port: 3001
+  request_content_type: "application/json"
+  response_content_type: "application/json"
+
+# Это тестовые идентификаторы акторов для изолированной API-проверки,
+# а не логины MAX и не подтверждённые учётные записи.
+# Большинство текущих маршрутов API не проверяет подпись MAX initData.
+test_accounts:
+  organizer:
+    role: "организатор события"
+    user_id: "demo-organizer"
+    credentials: "MAX-аутентификация для большинства API-маршрутов не реализована; тестовый actor ID передаётся в теле запроса."
+  participant:
+    role: "участник события"
+    user_id: "demo-participant"
+    credentials: "MAX-аутентификация для большинства API-маршрутов не реализована; используйте только в изолированной тестовой базе."
+
+execution:
+  mode: "Последовательно, на отдельной тестовой базе."
+  variables:
+    organizer_id: "test_accounts.organizer.user_id"
+    participant_id: "test_accounts.participant.user_id"
+    event_id: "Сохранить поле id из ответа проверки create_event."
+  notes:
+    - "Создайте событие с датой в будущем; создатель не может присоединиться к своему событию."
+    - "Проверка join_event требует event_id из create_event и participant_id, отличного от organizer_id."
+    - "delete_event удаляет созданное тестовое событие; выполняйте его только на изолированной тестовой базе."
+    - "В локальной базе нет заранее созданных тестовых событий."
+
+mandatory_checks:
+  - id: "health"
+    description: "Проверка доступности API."
+    request:
+      method: "GET"
+      path: "/health"
+      role: "anonymous"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          status: "ok"
+          bot: "string"
+          eventsCount: "number"
+          usersCount: "number"
+          seeded: "boolean"
+          timestamp: "string"
+
+  - id: "list_events"
+    description: "Получение ленты событий."
+    request:
+      method: "GET"
+      path: "/api/events"
+      role: "anonymous"
+      query:
+        city: "Казань"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        type: "array"
+        items:
+          fields:
+            id: "number"
+            title: "string"
+            category: "string"
+            date: "string"
+            price: "string"
+            participants: "number"
+
+  - id: "create_event"
+    description: "Создание будущего офлайн-события тестовым организатором."
+    request:
+      method: "POST"
+      path: "/api/events"
+      role: "организатор"
+      content_type: "application/json"
+      body:
+        title: "Тестовая прогулка Вместе"
+        description: "Тестовый сценарий проверки API"
+        category: "Прогулка"
+        date: "2099-06-01, 12:00"
+        startAt: "2099-06-01T09:00:00.000Z"
+        duration: "1 ч"
+        format: "Офлайн"
+        price: "Бесплатно"
+        address: "Казань, тестовая точка"
+        district: "Казань"
+        city: "Казань"
+        lat: 55.796
+        lng: 49.108
+        maxParticipants: 10
+        organizerId: "${organizer_id}"
+    expected:
+      status: [201]
+      content_type: "application/json"
+      json:
+        required:
+          id: "number"
+          title: "Тестовая прогулка Вместе"
+          organizerId: "${organizer_id}"
+          participants: 1
+          price: "Бесплатно"
+          createdAt: "string"
+      save:
+        event_id: "$.id"
+
+  - id: "read_created_event"
+    description: "Чтение события, созданного в основном сценарии."
+    depends_on: ["create_event"]
+    request:
+      method: "GET"
+      path: "/api/events/${event_id}"
+      role: "anonymous"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          id: "${event_id}"
+          title: "Тестовая прогулка Вместе"
+          organizerId: "${organizer_id}"
+          category: "Прогулка"
+          city: "Казань"
+
+  - id: "join_event"
+    description: "Запись второго пользователя на тестовое событие."
+    depends_on: ["create_event"]
+    request:
+      method: "POST"
+      path: "/api/events/${event_id}/join"
+      role: "участник"
+      content_type: "application/json"
+      body:
+        userId: "${participant_id}"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          success: true
+          participants: 2
+
+  - id: "leave_event"
+    description: "Отмена участия тем же тестовым пользователем."
+    depends_on: ["join_event"]
+    request:
+      method: "POST"
+      path: "/api/events/${event_id}/leave"
+      role: "участник"
+      content_type: "application/json"
+      body:
+        userId: "${participant_id}"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          success: true
+          participants: 1
+
+  - id: "update_event"
+    description: "Изменение названия события его организатором."
+    depends_on: ["create_event"]
+    request:
+      method: "PUT"
+      path: "/api/events/${event_id}"
+      role: "организатор"
+      content_type: "application/json"
+      body:
+        userId: "${organizer_id}"
+        title: "Тестовая прогулка Вместе — обновлено"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          id: "${event_id}"
+          title: "Тестовая прогулка Вместе — обновлено"
+          organizerId: "${organizer_id}"
+          updatedAt: "string"
+
+  - id: "delete_event"
+    description: "Удаление будущего тестового события его организатором."
+    depends_on: ["create_event", "update_event"]
+    request:
+      method: "DELETE"
+      path: "/api/events/${event_id}"
+      role: "организатор"
+      query:
+        userId: "${organizer_id}"
+    expected:
+      status: [204]
+      content_type: "none"
+      body: "empty"
+
+  - id: "moderation_rejects_prohibited_text"
+    description: "Проверка, что модерация отклоняет запрещённый текст."
+    request:
+      method: "POST"
+      path: "/api/moderation/check"
+      role: "anonymous"
+      content_type: "application/json"
+      body:
+        text: "секс-вечеринка"
+    expected:
+      status: [200]
+      content_type: "application/json"
+      json:
+        required:
+          isClean: false
+          reason: "string"
+
+error_responses:
+  description: "Ошибки маршрутов возвращаются JSON-объектом с полем error; отдельные маршруты могут дополнительно вернуть code."
+  examples:
+    validation:
+      status: 400
+      json:
+        required:
+          error: "string"
+    not_found:
+      status: 404
+      json:
+        required:
+          error: "string"
+
+security_notes:
+  - "Сохранение/чтение/удаление туристических планов требует Authorization: tma <MAX initData> и проверки подписи на сервере."
+  - "Большинство остальных API-маршрутов в этой версии не проверяет подпись MAX и доверяет переданным идентификаторам пользователя. Указанные тестовые ID допустимы только для локальной изолированной проверки."
+  - "Не используйте тестовые идентификаторы или реальные персональные данные в публичной среде."

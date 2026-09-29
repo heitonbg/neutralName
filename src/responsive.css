@@ -288,6 +288,7 @@ body[data-theme="dark"] .tourist-mode-copy small { color: #a6b8aa; }
 .profile-edit-form label { display: grid; gap: 6px; color: #5d6d84; font-size: 12px; font-weight: 600; }
 .profile-edit-form input, .profile-edit-form textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #e1e7ef; border-radius: 11px; outline-color: #2786f8; color: #1e2d43; font: inherit; resize: vertical; }
 .profile-edit-form .primary-btn { margin-top: 4px; }
+.profile-link-hint { color: #7d8a9c; font-size: 11px; font-weight: 400; line-height: 1.4; }
 .profile-about p { color: #53647a; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
 .detail-fact-button { display: grid; grid-template-columns: 28px 1fr; align-items: center; padding: 0; border: 0; background: transparent; color: #77859a; text-align: left; }
 .detail-fact-button strong { font-size: 12px; line-height: 1.2; color: #44536a; }
@@ -739,6 +740,7 @@ body[data-theme="dark"] .textarea-with-icon.error { background: #2a1a1c !importa
 body[data-theme="dark"] .format-segmented { background: #262a33 !important; }
 body[data-theme="dark"] .format-segmented button { color: #8b95a5 !important; }
 body[data-theme="dark"] .format-segmented button.active { background: #1c3a5e !important; color: #5ea4ff !important; }
+body[data-theme="dark"] .event-price-amount input { background: #262a33 !important; border-color: #2b3038 !important; color: #e8eaed !important; }
 body[data-theme="dark"] .image-upload-row { background: #262a33 !important; border-color: #2b3038 !important; }
 body[data-theme="dark"] .image-upload-row p { color: #8b95a5 !important; }
 body[data-theme="dark"] .image-placeholder { background: #1c3a5e !important; color: #5ea4ff !important; }

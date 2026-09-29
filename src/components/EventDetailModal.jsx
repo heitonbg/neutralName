@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { formatEventDate } from '../utils/dateFormat';
 import { getEventStatus, EVENT_STATUS_LABELS } from '../utils/eventFilters';
 import { resolveEventImage } from '../utils/defaultEventImages';
+import { formatEventPrice } from '../utils/eventPrice';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 import EventLocationMap from './EventLocationMap';
@@ -37,6 +38,7 @@ const EventDetailModal = ({
 
   const status = getEventStatus(event);
   const isPast = status === 'past';
+  const priceLabel = formatEventPrice(event);
 
   useEffect(() => setPhotoIndex(0), [event.id]);
   useEffect(() => {
@@ -127,8 +129,9 @@ const EventDetailModal = ({
           )}
           <span
             className={`badge ${event.price === 'Бесплатно' ? 'free' : 'paid'} hero-price`}
+            title={event.price === 'Платно' ? `Платно — ${priceLabel}` : priceLabel}
           >
-            {event.price}
+            {priceLabel}
           </span>
           {(status === 'soon' || status === 'live') && (
             <span className={`badge status status-${status} hero-status`}>

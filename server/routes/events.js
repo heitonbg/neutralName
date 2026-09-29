@@ -11,6 +11,14 @@ import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
 
 const router = express.Router();
 
+const normalizePriceAmount = (price, value) => {
+  if (price !== 'Платно') return { amount: null };
+
+  const amount = Number(value);
+  if (!Number.isInteger(amount) || amount < 1) return null;
+  return { amount };
+};
+
 function isEventPast(event) {
   const raw = String(event?.date || '').trim();
   const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T,\s]+(\d{1,2}):(\d{2}))?/);
@@ -158,6 +166,12 @@ router.post('/', (req, res) => {
 
   if (!organizerId) return res.status(400).json({ error: 'organizerId required' });
 
+  const price = req.body.price || 'Бесплатно';
+  const normalizedPrice = normalizePriceAmount(price, req.body.priceAmount);
+  if (!normalizedPrice) {
+    return res.status(400).json({ error: 'Для платного события укажите стоимость целым числом от 1 ₽' });
+  }
+
   const titleCheck = moderateContent(title);
   if (!titleCheck.isClean) return res.status(400).json({ error: titleCheck.reason });
 
@@ -173,6 +187,8 @@ router.post('/', (req, res) => {
 
   const newEvent = {
     ...req.body,
+    price,
+    priceAmount: normalizedPrice.amount,
     id: Date.now(),
     duration: typeof duration === 'string' ? duration.trim() : '',
     images,
@@ -237,8 +253,18 @@ router.put('/:id', (req, res) => {
     ? resolveEventImages(req.body, event.image)
     : { images: event.images, image: event.image };
 
+  const priceChanged = Object.hasOwn(req.body, 'price') || Object.hasOwn(req.body, 'priceAmount');
+  const normalizedPrice = priceChanged
+    ? normalizePriceAmount(req.body.price ?? event.price, req.body.priceAmount)
+    : { amount: event.priceAmount ?? null };
+  if (!normalizedPrice) {
+    return res.status(400).json({ error: 'Для платного события укажите стоимость целым числом от 1 ₽' });
+  }
+
   const patch = {
     ...req.body,
+    price: req.body.price ?? event.price,
+    priceAmount: normalizedPrice.amount,
     id: eventId,
     duration: typeof duration === 'string' ? duration.trim() : event.duration,
     images,

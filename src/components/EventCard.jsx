@@ -2,6 +2,7 @@ import React from 'react';
 import { formatEventDate } from '../utils/dateFormat';
 import { getEventStatus, EVENT_STATUS_LABELS } from '../utils/eventFilters';
 import { resolveEventImage } from '../utils/defaultEventImages';
+import { formatEventPrice } from '../utils/eventPrice';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
 
@@ -54,6 +55,7 @@ const EventCard = ({
   const status = getEventStatus(event);
   const showStatusBadge = status === 'soon' || status === 'live';
   const statusLabel = showStatusBadge ? EVENT_STATUS_LABELS[status] : '';
+  const priceLabel = formatEventPrice(event);
 
   const isFull =
     !isOwner &&
@@ -107,9 +109,9 @@ const EventCard = ({
           className={`badge ${event.price === 'Бесплатно' ? 'free' : 'paid'} ${
             event.price === 'Пушкинская карта' ? 'pushkin' : ''
           }`}
-          title={event.price}
+          title={event.price === 'Платно' ? `Платно — ${priceLabel}` : priceLabel}
         >
-          {event.price}
+          {priceLabel}
         </span>
         {hasFriends && (
           <span className="badge friend-going-badge" title="Друг идёт">

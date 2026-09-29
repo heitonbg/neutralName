@@ -106,12 +106,17 @@ export const maxBridge = {
   }
 };
 
-export const openMaxChat = (userId) => {
-  const id = String(userId ?? '').trim();
-  if (!id) return false;
+export const extractMaxUserLink = (value) => {
+  const match = String(value ?? '').match(/https:\/\/max\.ru\/u\/[A-Za-z0-9_-]+/i);
+  return match?.[0] || '';
+};
+
+export const openMaxChat = (value) => {
+  const link = extractMaxUserLink(value);
+  if (!link) return false;
 
   try {
-    maxBridge.openLink(`https://max.ru/u/${encodeURIComponent(id)}`);
+    maxBridge.openLink(link);
     return true;
   } catch (error) {
     console.warn('Не удалось открыть чат в MAX', error);

@@ -126,7 +126,9 @@ const OrganizerProfileModal = ({
           <button
             type="button"
             className="friend-action-btn friend-action-btn--chat"
-            onClick={() => openMaxChat(organizer.id)}
+            onClick={() => openMaxChat(organizer.maxLink)}
+            disabled={!organizer.maxLink}
+            title={organizer.maxLink ? 'Написать в MAX' : 'Пользователь пока не добавил ссылку на MAX'}
           >
             <Icon name="share" size={17} /> Написать в MAX
           </button>

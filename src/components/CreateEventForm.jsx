@@ -106,6 +106,7 @@ const CreateEventForm = ({
     durationMinutes: durationParsed.minutes,
     format: initialFormat,
     price: initialEvent?.price || 'Бесплатно',
+    priceAmount: initialEvent?.priceAmount != null ? String(initialEvent.priceAmount) : '',
     address: /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/.test(initialEvent?.address || '')
       ? `${initialEvent?.city || city}, место на карте`
       : (isOnlineInitially ? '' : (initialEvent?.address || '')),
@@ -294,6 +295,13 @@ const CreateEventForm = ({
       if (limit > 1000) nextErrors.limit = 'Максимум 1000 участников';
     }
 
+    if (formData.price === 'Платно') {
+      const priceAmount = Number(formData.priceAmount);
+      if (!formData.priceAmount || !Number.isInteger(priceAmount) || priceAmount < 1) {
+        nextErrors.priceAmount = 'Укажите стоимость целым числом от 1 ₽';
+      }
+    }
+
     const firstUrlImage = formData.images.find((img) => typeof img === 'string' && !img.startsWith('data:'));
     if (firstUrlImage) {
       const imageCheck = moderateUrl(firstUrlImage);
@@ -336,6 +344,7 @@ const CreateEventForm = ({
 
       const payload = {
         ...formData,
+        priceAmount: formData.price === 'Платно' ? Number(formData.priceAmount) : null,
         date: `${formData.date}, ${formData.time}`,
         startAt,
         duration: durationStr,
@@ -608,11 +617,35 @@ const CreateEventForm = ({
           <label>Стоимость</label>
           <div className="format-segmented">
             {['Бесплатно', 'Платно'].map((price) => (
-              <button type="button" key={price} className={formData.price === price ? 'active' : ''} onClick={() => setField('price', price)}>
+              <button
+                type="button"
+                key={price}
+                className={formData.price === price ? 'active' : ''}
+                onClick={() => {
+                  setField('price', price);
+                  if (price === 'Бесплатно') setField('priceAmount', '');
+                }}
+              >
                 {price}
               </button>
             ))}
           </div>
+          {formData.price === 'Платно' && (
+            <label className="event-price-amount">
+              Стоимость, ₽
+              <input
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={formData.priceAmount}
+                onChange={(e) => setField('priceAmount', e.target.value)}
+                placeholder="Например, 500"
+                aria-invalid={Boolean(errors.priceAmount)}
+              />
+              {errors.priceAmount && <span className="error-text">{errors.priceAmount}</span>}
+            </label>
+          )}
         </div>
 
         {!isOnline && (

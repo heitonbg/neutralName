@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import LegalDocument from './LegalDocument';
 import { searchCities, findCityByName } from '../utils/citySearch';
+import { extractMaxUserLink } from '../utils/maxBridge';
 
 const Profile = ({
   user, joinedIds, createdCount,
@@ -21,6 +22,7 @@ const Profile = ({
   const [cityQuery, setCityQuery] = useState(profile.city || '');
   const [citySuggestions, setCitySuggestions] = useState([]);
   const [cityError, setCityError] = useState('');
+  const [maxLinkError, setMaxLinkError] = useState('');
   const cityInputRef = useRef(null);
 
   // ★ Флаг: пользователь только что выбрал город из подсказки.
@@ -31,6 +33,7 @@ const Profile = ({
     setDraft(profile);
     setCityQuery(profile.city || '');
     setCityError('');
+    setMaxLinkError('');
     pickedFromSuggestionsRef.current = false;
   }, [profile]);
 
@@ -90,6 +93,13 @@ const Profile = ({
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const maxLinkText = String(draft.maxLink || '').trim();
+    const maxLink = extractMaxUserLink(maxLinkText);
+    if (maxLinkText && !maxLink) {
+      setMaxLinkError('Вставьте приглашение из MAX со ссылкой вида https://max.ru/u/…');
+      return;
+    }
+
     const typed = cityQuery.trim();
     if (typed) {
       const match = findCityByName(typed);
@@ -103,6 +113,7 @@ const Profile = ({
     onSaveProfile?.({
       ...draft,
       city: typed ? findCityByName(typed)?.name || '' : '',
+      maxLink,
     });
     setIsEditing(false);
   };
@@ -209,6 +220,24 @@ const Profile = ({
               }
               placeholder="Расскажите, чем любите заниматься"
             />
+          </label>
+
+          <label>
+            Ссылка на профиль в MAX
+            <input
+              type="text"
+              value={draft.maxLink || ''}
+              onChange={(e) => {
+                setDraft((prev) => ({ ...prev, maxLink: e.target.value }));
+                setMaxLinkError('');
+              }}
+              placeholder="Вставьте скопированный текст из MAX"
+              aria-describedby="profile-max-link-hint"
+            />
+            <small id="profile-max-link-hint" className="profile-link-hint">
+              Вставьте текст приглашения из MAX — ссылка на профиль сохранится автоматически.
+            </small>
+            {maxLinkError && <small className="error-text">{maxLinkError}</small>}
           </label>
 
           <button className="primary-btn" type="submit">

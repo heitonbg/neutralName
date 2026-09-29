@@ -149,7 +149,7 @@ export default function UserProfileModal({
   };
 
   const handleOpenChat = () => {
-    if (person?.id) openMaxChat(person.id);
+    if (person?.maxLink) openMaxChat(person.maxLink);
   };
 
   const renderFriendButtons = () => {
@@ -164,6 +164,8 @@ export default function UserProfileModal({
             type="button"
             className="friend-action-btn friend-action-btn--chat"
             onClick={handleOpenChat}
+            disabled={!person.maxLink}
+            title={person.maxLink ? 'Написать в MAX' : 'Пользователь пока не добавил ссылку на MAX'}
           >
             <Icon name="share" size={17} /> Написать в MAX
           </button>

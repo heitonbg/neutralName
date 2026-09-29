@@ -36,7 +36,7 @@ import { fetchFriends } from './api/friends';
 import { isEventOwner } from './utils/eventOwnership';
 import DeleteEventDialog from './components/DeleteEventDialog';
 import ConfirmDialog from './components/ConfirmDialog';
-import { maxBridge } from './utils/maxBridge';
+import { extractMaxUserLink, maxBridge } from './utils/maxBridge';
 import { haversineDistance, formatDistance, eventBelongsToCity } from './utils/distance';
 import { storage } from './utils/storage';
 import { touristPlanStorage } from './utils/touristPlanStorage';
@@ -825,6 +825,7 @@ function App() {
       age: Number.isInteger(age) && age >= 14 && age <= 120 ? age : null,
       city: String(nextProfile.city || '').trim().slice(0, 80),
       about: String(nextProfile.about || '').trim().slice(0, 500),
+      maxLink: extractMaxUserLink(nextProfile.maxLink),
       name: user?.first_name
         ? `${user.first_name} ${user.last_name || ''}`.trim()
         : undefined,

@@ -86,6 +86,7 @@ router.get('/search', (req, res) => {
         city: u.city || null,
         age: u.age ?? null,
         about: u.about || null,
+        maxLink: u.maxLink || '',
         friendshipStatus,
         requestedByMe,
       };
@@ -106,10 +107,10 @@ router.get('/:id', (req, res) => {
 
 /**
  * PATCH /api/users/:id
- * Обновляет профиль. Принимает name, photo_url, age, city, about, theme, notificationsEnabled.
+ * Обновляет профиль. Принимает name, photo_url, age, city, about, maxLink, theme, notificationsEnabled.
  */
 router.patch('/:id', (req, res) => {
-  const { name, photo_url, age, city, about, theme, notificationsEnabled } = req.body;
+  const { name, photo_url, age, city, about, maxLink, theme, notificationsEnabled } = req.body;
 
   const patch = {};
   if (typeof name === 'string') patch.name = name.trim().slice(0, 100);
@@ -125,6 +126,13 @@ router.patch('/:id', (req, res) => {
   if (typeof city === 'string') patch.city = city.trim().slice(0, 80);
   if (theme === 'dark' || theme === 'light') patch.theme = theme;
   if (typeof about === 'string') patch.about = about.trim().slice(0, 500);
+  if (typeof maxLink === 'string') {
+    const match = maxLink.match(/https:\/\/max\.ru\/u\/([A-Za-z0-9_-]+)/i);
+    if (maxLink.trim() && !match) {
+      return res.status(400).json({ error: 'Некорректная ссылка на профиль MAX' });
+    }
+    patch.maxLink = match ? `https://max.ru/u/${match[1]}` : '';
+  }
 
   // ★ Уведомления
   if (typeof notificationsEnabled === 'boolean') {

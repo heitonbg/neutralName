@@ -30,6 +30,7 @@ const normalizePerson = (entry) => {
     city: raw.city || null,
     age: raw.age ?? null,
     about: raw.about || null,
+    maxLink: raw.maxLink || '',
     friendshipStatus: raw.friendshipStatus ?? null,
     requestedByMe: Boolean(raw.requestedByMe),
   };
@@ -475,8 +476,9 @@ export default function FriendsPage({
                       <button
                         type="button"
                         className="friend-btn"
-                        onClick={() => openMaxChat(f.id)}
-                        title="Написать в MAX"
+                        onClick={() => openMaxChat(f.maxLink)}
+                        disabled={!f.maxLink}
+                        title={f.maxLink ? 'Написать в MAX' : 'Пользователь пока не добавил ссылку на MAX'}
                       >
                         <Icon name="share" size={15} /> Написать
                       </button>

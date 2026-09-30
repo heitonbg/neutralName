@@ -1,3 +1,12 @@
+const LOCAL_TEST_ENABLED = String(import.meta.env?.VITE_LOCAL_TEST_USER || '').toLowerCase() === 'true';
+const LOCAL_TEST_USER = {
+  id: String(import.meta.env?.VITE_LOCAL_USER_ID || 'local-reviewer'),
+  name: String(import.meta.env?.VITE_LOCAL_USER_NAME || 'Проверяющий'),
+  first_name: String(import.meta.env?.VITE_LOCAL_USER_NAME || 'Проверяющий'),
+  city: String(import.meta.env?.VITE_LOCAL_USER_CITY || 'Казань'),
+  photo_url: null,
+};
+
 // src/utils/maxBridge.js
 export const maxBridge = {
   isAvailable: () => typeof window !== 'undefined' && !!window.WebApp,
@@ -16,9 +25,16 @@ export const maxBridge = {
   },
 
   getUser: () => {
+    // SDK MAX может присутствовать и в обычном браузере, но без initData/user.
+    // Поэтому сначала используем реального пользователя, только если он действительно есть.
     if (maxBridge.isAvailable()) {
-      return window.WebApp.initDataUnsafe?.user || null;
+      const maxUser = window.WebApp.initDataUnsafe?.user || null;
+      if (maxUser?.id) return maxUser;
     }
+
+    // Для локальной Docker-проверки явно разрешаем fallback-пользователя,
+    // даже если объект window.WebApp уже был создан подключенным SDK.
+    if (LOCAL_TEST_ENABLED) return LOCAL_TEST_USER;
     return null;
   },
 

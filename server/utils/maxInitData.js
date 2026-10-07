@@ -99,3 +99,9 @@ export function createMaxAuthMiddleware({ maxAgeSeconds = 60 * 60 } = {}) {
 }
 
 export const requireMaxUser = createMaxAuthMiddleware();
+
+export function optionalMaxUser(req, res, next) {
+  const authorization = String(req.get('authorization') || '');
+  if (!authorization) return next();
+  return requireMaxUser(req, res, next);
+}

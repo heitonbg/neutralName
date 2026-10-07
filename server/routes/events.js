@@ -9,6 +9,7 @@ import { scheduleEventReminder, cancelEventReminder } from '../reminders.js';
 import { uploadDir } from '../utils/uploadStorage.js';
 import { collectUnusedEventUploadFilenames } from '../utils/eventImages.js';
 import { isEventPast } from '../utils/eventTime.js';
+import { optionalMaxUser, requireMaxUser } from '../utils/maxInitData.js';
 
 const router = express.Router();
 const EVENT_PRICES = new Set(['Бесплатно', 'Платно', 'Пушкинская карта']);
@@ -76,8 +77,9 @@ function buildFriendGoers(event, friendIds) {
 }
 
 // GET /api/events?city=...&category=...&price=...&viewerId=...
-router.get('/', (req, res) => {
-  const { category, price, city, viewerId } = req.query;
+router.get('/', optionalMaxUser, (req, res) => {
+  const { category, price, city } = req.query;
+  const viewerId = req.maxUser?.id;
   let result = [...db.events];
   if (city) result = result.filter((e) => (e.city || 'Казань') === city);
   if (category) result = result.filter((e) => e.category === category);
@@ -94,9 +96,8 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/events/joined?userId=123 — текущие участия
-router.get('/joined', (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.json({ eventIds: [] });
+router.get('/joined', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const eventIds = [];
   for (const [eventId, users] of db.joinedUsers.entries()) {
     if (users.has(String(userId))) eventIds.push(Number(eventId));
@@ -105,9 +106,8 @@ router.get('/joined', (req, res) => {
 });
 
 // GET /api/events/participated?userId=123
-router.get('/participated', (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.json({ eventIds: [] });
+router.get('/participated', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const eventIds = [];
   for (const [eventId, users] of db.participatedUsers.entries()) {
     if (users.has(String(userId))) eventIds.push(Number(eventId));
@@ -116,11 +116,11 @@ router.get('/participated', (req, res) => {
 });
 
 // GET /api/events/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', optionalMaxUser, (req, res) => {
   const event = db.findEvent(parseInt(req.params.id, 10));
   if (!event) return res.status(404).json({ error: 'Event not found' });
   const hydrated = db.hydrateEvent(event);
-  const viewerId = req.query.viewerId != null ? String(req.query.viewerId) : '';
+  const viewerId = req.maxUser?.id || '';
   const friendIds = viewerId ? db.friendIdsFor(viewerId) : null;
   res.json({ ...hydrated, friendGoers: buildFriendGoers(hydrated, friendIds) });
 });
@@ -134,7 +134,7 @@ router.get('/:id/participants', (req, res) => {
 });
 
 // POST /api/events
-router.post('/', (req, res) => {
+router.post('/', requireMaxUser, (req, res) => {
   const {
     title,
     description,
@@ -142,11 +142,9 @@ router.post('/', (req, res) => {
     format,
     city,
     duration,
-    organizerId,
     organizerProfile,
   } = req.body;
-
-  if (!organizerId) return res.status(400).json({ error: 'organizerId required' });
+  const organizerId = req.maxUser.id;
 
   const price = req.body.price || 'Бесплатно';
   if (!EVENT_PRICES.has(price)) {
@@ -210,9 +208,10 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/events/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', requireMaxUser, (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, title, description, address, format, duration } = req.body;
+  const { title, description, address, format, duration } = req.body;
+  const userId = req.maxUser.id;
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
@@ -273,6 +272,7 @@ router.put('/:id', (req, res) => {
     updatedAt: new Date().toISOString(),
   };
   delete patch.organizer;
+  delete patch.userId;
   delete patch.organizerId;
   delete patch.organizerProfile;
   delete patch.participantIds;
@@ -286,10 +286,10 @@ router.put('/:id', (req, res) => {
 });
 
 // POST /api/events/:id/join
-router.post('/:id/join', (req, res) => {
+router.post('/:id/join', requireMaxUser, (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, userProfile } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
+  const { userProfile } = req.body;
+  const userId = req.maxUser.id;
 
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -332,10 +332,9 @@ router.post('/:id/join', (req, res) => {
 });
 
 // POST /api/events/:id/leave
-router.post('/:id/leave', (req, res) => {
+router.post('/:id/leave', requireMaxUser, (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
+  const userId = req.maxUser.id;
 
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -357,9 +356,9 @@ router.post('/:id/leave', (req, res) => {
 });
 
 // DELETE /api/events/:id?userId=123
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireMaxUser, async (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const userId = req.query.userId;
+  const userId = req.maxUser.id;
 
   const event = db.findEvent(eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -403,12 +402,14 @@ router.get('/:id/reviews', (req, res) => {
   res.json(reviews);
 });
 
-router.post('/:id/reviews', (req, res) => {
+router.post('/:id/reviews', requireMaxUser, (req, res) => {
   const eventId = parseInt(req.params.id, 10);
-  const { userId, userName, rating, text, organizerRating } = req.body;
+  const { rating, text, organizerRating } = req.body;
+  const userId = req.maxUser.id;
+  const userName = db.findUser(userId)?.name || req.maxUser.name || 'Гость';
 
-  if (!userId || !rating || !text) {
-    return res.status(400).json({ error: 'userId, rating и text обязательны' });
+  if (!rating || !text) {
+    return res.status(400).json({ error: 'rating и text обязательны' });
   }
   if (rating < 1 || rating > 5) {
     return res.status(400).json({ error: 'Оценка от 1 до 5' });

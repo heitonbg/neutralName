@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import styles from './DeleteEventDialog.module.css';
 
 export default function ConfirmDialog({
   title,
@@ -24,7 +25,7 @@ export default function ConfirmDialog({
   return (
     <dialog
       ref={dialog}
-      className="delete-event-dialog"
+      className={styles.dialog}
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
       onCancel={(e) => {
@@ -34,13 +35,13 @@ export default function ConfirmDialog({
     >
       <h2 id="confirm-dialog-title">{title}</h2>
       <p id="confirm-dialog-description">{description}</p>
-      <div className="delete-event-actions">
+      <div className={styles.actions}>
         <button type="button" autoFocus disabled={busy} onClick={onCancel}>
           {cancelLabel}
         </button>
         <button
           type="button"
-          className={destructive ? 'delete-event-confirm' : ''}
+          className={destructive ? styles.confirm : ''}
           disabled={busy}
           onClick={onConfirm}
         >

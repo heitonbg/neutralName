@@ -1,4 +1,3 @@
-import React from 'react';
 import Icon from './Icon';
 
 const OrganizerModal = ({ isOpen, onClose, organizer, eventsCount }) => {

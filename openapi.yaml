@@ -3,10 +3,10 @@ info:
   title: Вместе API
   version: 1.0.0
   description: >-
-    HTTP-контракт маршрутов приложения. Идентификаторы userId, organizerId и
-    другие actor ID, переданные клиентом, сами по себе не обеспечивают
-    аутентификацию. Подписанные MAX initData проверяются только на операциях
-    сохранения, чтения и удаления туристических планов.
+    HTTP-контракт маршрутов приложения. Защищённые операции требуют подписанные
+    MAX initData в заголовке Authorization: tma <initData>. Идентификатор
+    пользователя берётся из проверенной подписи; actor ID из тела и query
+    string не используются как подтверждение личности.
 servers:
   - url: https://maxserver-iwrawww.amvera.io
 paths:
@@ -35,6 +35,8 @@ paths:
                   $ref: "#/components/schemas/Event"
     post:
       summary: Создание события
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -67,11 +69,6 @@ paths:
         in: query
         schema:
           type: string
-      - name: viewerId
-        in: query
-        schema:
-          type: string
-
   /api/events/{eventId}:
     parameters:
       - name: eventId
@@ -96,6 +93,8 @@ paths:
                 $ref: "#/components/schemas/Error"
     put:
       summary: Изменение события
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -129,12 +128,8 @@ paths:
                 $ref: "#/components/schemas/Error"
     delete:
       summary: Удаление события организатором
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "204":
           description: Событие удалено
@@ -166,6 +161,8 @@ paths:
           type: integer
     post:
       summary: Запись пользователя на событие
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -201,6 +198,8 @@ paths:
           type: integer
     post:
       summary: Отмена участия в событии
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -230,11 +229,8 @@ paths:
   /api/bootstrap:
     get:
       summary: Получение стартового состояния приложения
-      parameters:
-        - name: userId
-          in: query
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "200":
           description: Профиль и идентификаторы событий пользователя
@@ -247,11 +243,8 @@ paths:
   /api/events/joined:
     get:
       summary: Получение текущих участий пользователя
-      parameters:
-        - name: userId
-          in: query
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "200":
           description: Идентификаторы событий, в которых пользователь участвует
@@ -269,11 +262,8 @@ paths:
   /api/events/participated:
     get:
       summary: Получение истории участий пользователя
-      parameters:
-        - name: userId
-          in: query
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "200":
           description: Идентификаторы событий, в которых пользователь участвовал
@@ -330,13 +320,15 @@ paths:
           description: Событие не найдено
     post:
       summary: Добавление отзыва о завершённом событии
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId, rating, text]
+              required: [rating, text]
       responses:
         "201":
           description: Отзыв добавлен
@@ -362,14 +354,12 @@ paths:
   /api/users/search:
     get:
       summary: Поиск пользователей
+      security:
+        - maxInitData: []
       parameters:
         - name: q
           in: query
           required: true
-          schema:
-            type: string
-        - name: userId
-          in: query
           schema:
             type: string
       responses:
@@ -404,6 +394,8 @@ paths:
                 $ref: "#/components/schemas/Error"
     patch:
       summary: Обновление профиля пользователя
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -450,12 +442,8 @@ paths:
   /api/friends:
     get:
       summary: Получение друзей и заявок пользователя
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "200":
           description: Друзья, входящие и исходящие заявки
@@ -474,13 +462,15 @@ paths:
   /api/friends/request:
     post:
       summary: Создание заявки в друзья
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [fromId, toId]
+              required: [toId]
       responses:
         "200":
           description: Заявка создана либо связь уже существует
@@ -495,12 +485,9 @@ paths:
   /api/friends/status:
     get:
       summary: Получение статуса дружбы
+      security:
+        - maxInitData: []
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
         - name: otherId
           in: query
           required: true
@@ -513,13 +500,15 @@ paths:
   /api/friends/decline:
     post:
       summary: Отклонение или отмена заявки в друзья
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId, fromId]
+              required: [fromId]
       responses:
         "200":
           description: Заявка отклонена или отменена
@@ -532,16 +521,16 @@ paths:
   /api/friends/accept:
     post:
       summary: Принятие входящей заявки в друзья
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId, fromId]
+              required: [fromId]
               properties:
-                userId:
-                  type: string
                 fromId:
                   type: string
       responses:
@@ -571,12 +560,8 @@ paths:
           type: string
     delete:
       summary: Удаление друга
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
+      security:
+        - maxInitData: []
       responses:
         "200":
           description: Связь удалена или уже отсутствует
@@ -795,6 +780,8 @@ paths:
   /api/tourist/plan:
     post:
       summary: Генерация вариантов туристического плана
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -853,6 +840,8 @@ paths:
   /api/reports:
     post:
       summary: Отправка жалобы на событие
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -864,8 +853,6 @@ paths:
                 eventId:
                   type: integer
                 reason:
-                  type: string
-                reporterId:
                   type: string
                 comment:
                   type: string
@@ -887,6 +874,8 @@ paths:
   /api/upload:
     post:
       summary: Загрузка изображений события
+      security:
+        - maxInitData: []
       requestBody:
         required: true
         content:
@@ -1014,7 +1003,7 @@ components:
 
     EventCreate:
       type: object
-      required: [title, organizerId]
+      required: [title]
       properties:
         title:
           type: string
@@ -1037,14 +1026,15 @@ components:
         maxParticipants:
           type: integer
         organizerId:
+          description: Игнорируется API; автор определяется по MAX initData.
           type: string
       additionalProperties: true
 
     EventUpdate:
       type: object
-      required: [userId]
       properties:
         userId:
+          description: Игнорируется API; пользователь определяется по MAX initData.
           type: string
         title:
           type: string
@@ -1060,9 +1050,9 @@ components:
 
     EventParticipation:
       type: object
-      required: [userId]
       properties:
         userId:
+          description: Игнорируется API; пользователь определяется по MAX initData.
           type: string
       additionalProperties: true
 

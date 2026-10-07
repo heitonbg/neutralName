@@ -1,0 +1,13 @@
+.map {
+  height: 230px;
+  overflow: hidden;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: #e7eee8;
+}
+
+.map :global(.leaflet-container) {
+  width: 100%;
+  height: 100%;
+  background: #e7eee8;
+}

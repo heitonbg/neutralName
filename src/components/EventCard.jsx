@@ -1,10 +1,11 @@
-import React from 'react';
 import { formatEventDate } from '../utils/dateFormat';
 import { getEventStatus, EVENT_STATUS_LABELS } from '../utils/eventFilters';
 import { resolveEventImage } from '../utils/defaultEventImages';
 import { formatEventPrice } from '../utils/eventPrice';
 import Icon from './Icon';
 import EventOwnerMenu from './EventOwnerMenu';
+import styles from './EventCard.module.css';
+import legacyStyles from './EventCardLegacy.module.css';
 
 const FriendAvatars = ({ friends = [] }) => {
   if (!friends.length) return null;
@@ -98,7 +99,7 @@ const EventCard = ({
 
   return (
     <div
-      className={`event-card-horizontal ${isOwner ? 'event-card-owned' : ''} ${
+      className={`event-card-horizontal ${styles.scope} ${legacyStyles.legacyScope} ${isOwner ? 'event-card-owned' : ''} ${
         status === 'live' ? 'event-card-live' : ''
       }`}
       onClick={() => onClick(event)}

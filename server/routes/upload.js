@@ -3,6 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import { randomUUID } from 'node:crypto';
 import { uploadDir } from '../utils/uploadStorage.js';
+import { requireMaxUser } from '../utils/maxInitData.js';
 
 // Создаём папку, если её нет
 if (!fs.existsSync(uploadDir)) {
@@ -45,7 +46,7 @@ const router = express.Router();
  * Multipart form-data с полем "photos" (до 5 файлов)
  * Возвращает массив URL
  */
-router.post('/', upload.array('photos', 5), (req, res) => {
+router.post('/', requireMaxUser, upload.array('photos', 5), (req, res) => {
   if (!req.files || !req.files.length) {
     return res.status(400).json({ error: 'Файлы не переданы' });
   }

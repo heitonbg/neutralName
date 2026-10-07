@@ -1,0 +1,1006 @@
+.scope {
+}
+.scope:global(.app-container) :global(.main-content > .mobile-header),
+.scope:global(.app-container) :global(.main-content > .search-bar),
+.scope:global(.app-container) :global(.main-content > .tabs-row),
+.scope:global(.app-container) :global(.main-content > .quick-filters),
+.scope:global(.app-container) :global(.main-content > .content-area) {
+  background-color: #f7f9fc;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .mobile-header),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .search-bar),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .tabs-row),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .quick-filters),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .content-area) {
+  background-color: #1e2128 !important;
+}
+.scope:global(.app-container) :global(.bottom-nav) {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:nth-child(1)) {
+  grid-column: 1;
+  grid-row: 1;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:nth-child(2)) {
+  grid-column: 3;
+  grid-row: 1;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:nth-child(3)) {
+  grid-column: 2;
+  grid-row: 1;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:nth-child(4)) {
+  grid-column: 4;
+  grid-row: 1;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:nth-child(5)) {
+  grid-column: 5;
+  grid-row: 1;
+}
+.scope:global(.app-container) :global(.bottom-nav > button:not(.create-btn)) {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+}
+.scope:global(.app-container) :global(.header-more) {
+  display: none !important;
+}
+.scope:global(.app-container) :global(.main-content > .tabs-row) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: #f0f3f8;
+  box-shadow: none;
+}
+.scope:global(.app-container) :global(.main-content > .tabs-row .tab-btn) {
+  min-width: 0;
+  height: 32px;
+  padding: 0 12px;
+  gap: 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #465571;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: none;
+}
+.scope:global(.app-container)
+  :global(.main-content > .tabs-row .tab-btn.active) {
+  background: #d7e7ff;
+  color: #0876ed;
+}
+.scope:global(.app-container)
+  :global(.main-content > .tabs-row .tab-btn:hover:not(.active)) {
+  background: #e7eef8;
+}
+.scope:global(.app-container) :global(.main-content > .tabs-row .tab-icon svg) {
+  width: 20px;
+  height: 20px;
+}
+.scope:global(.app-container) :global(.content-area) {
+  overflow: visible;
+}
+.scope:global(.app-container) :global(.bottom-nav) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  min-height: 74px;
+  padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+}
+.scope:global(.app-container) :global(.bottom-nav > button) {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  justify-content: center;
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn),
+.scope:global(.app-container) :global(.bottom-nav .create-btn.active) {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  justify-self: center;
+  border-radius: 50%;
+  transform: none;
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn .icon-plus) {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  box-shadow: 0 3px 10px #2786f830;
+}
+.scope:global(.app-container) :global(.mobile-title-row) {
+  align-items: center;
+}
+.scope:global(.app-container) :global(.mobile-header h1) {
+  min-width: 0;
+  font-size: 25px;
+  white-space: normal;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  line-height: 1.2;
+}
+.scope:global(.app-container) :global(.header-more) {
+  width: 42px;
+  height: 42px;
+}
+.scope:global(.app-container) :global(.search-bar input) {
+  min-width: 0;
+}
+.scope:global(.app-container) :global(.event-card-horizontal) {
+  min-width: 0;
+}
+.scope:global(.app-container) :global(.event-card-image) {
+  width: 112px;
+}
+.scope:global(.app-container) :global(.event-card-meta) {
+  display: flex;
+  flex-wrap: wrap;
+}
+.scope:global(.app-container) :global(.event-card-meta span) {
+  white-space: nowrap;
+}
+.scope:global(.app-container) :global(.like-btn.liked) {
+  color: #e44762;
+}
+@media (max-width: 767px) {
+  .scope:global(.app-container) :global(.bottom-nav) {
+    width: 100%;
+    max-width: none;
+    left: 0;
+    right: 0;
+    transform: none;
+  }
+  .scope:global(.app-container) :global(.mobile-header),
+  .scope:global(.app-container) :global(.search-bar) {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .scope:global(.app-container) :global(.tabs-row) {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+  .scope:global(.app-container) :global(.quick-filters) {
+    padding: 0 16px 10px;
+    gap: 8px;
+  }
+  .scope:global(.app-container) :global(.quick-filters) {
+    width: auto;
+    max-width: calc(100% - 32px);
+    margin-inline: auto;
+    padding: 0 0 10px;
+    box-sizing: border-box;
+  }
+  .scope:global(.app-container) :global(.quick-filters .chip) {
+    padding: 8px 13px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .scope:global(.app-container) :global(.search-bar) {
+    padding-bottom: 12px;
+  }
+  .scope:global(.app-container) :global(.content-area) {
+    padding: 0 16px 100px;
+  }
+}
+
+.scope:global(.app-container) :global(.mobile-header) {
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  :global(body) {
+    background: #eef2f7;
+  }
+  .scope:global(.app-container) :global(.mobile-header) {
+    padding: 28px 28px 12px;
+  }
+  .scope:global(.app-container) :global(.mobile-header h1) {
+    font-size: 30px;
+    gap: 18px;
+  }
+  .scope:global(.app-container) :global(.search-bar) {
+    padding: 12px 28px 18px;
+  }
+  .scope:global(.app-container) :global(.tabs-row) {
+    margin: 0 28px 16px;
+    padding: 4px;
+    width: min(380px, calc(100% - 56px));
+  }
+  .scope:global(.app-container) :global(.quick-filters) {
+    padding: 0 28px 20px;
+  }
+  .scope:global(.app-container) :global(.content-area) {
+    padding: 20px 28px 28px;
+  }
+  .scope:global(.app-container) :global(.event-feed) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .scope:global(.app-container) :global(.event-card-horizontal) {
+    padding: 14px;
+    gap: 16px;
+  }
+  .scope:global(.app-container) :global(.event-card-image) {
+    width: 132px;
+    height: 170px;
+  }
+  .scope:global(.app-container) :global(.event-card-horizontal h3) {
+    font-size: 17px;
+  }
+  .scope:global(.app-container) :global(.event-card-description) {
+    font-size: 13px;
+  }
+  .scope:global(.app-container) :global(.join-btn-small) {
+    align-self: flex-start;
+    min-width: 150px;
+  }
+  .scope:global(.app-container) :global(.modal-overlay) {
+    padding: 24px;
+    align-items: center;
+  }
+}
+
+@media (min-width: 1150px) {
+  .scope:global(.app-container) :global(.event-feed) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.scope:global(.app-container) :global(.primary-btn:disabled),
+.scope:global(.app-container) :global(.join-btn-small:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.scope:global(.app-container) :global(.organizer-modal) {
+  padding: 0 0 24px;
+  max-width: 480px;
+  position: relative;
+}
+
+.scope:global(.app-container) :global(.organizer-close) {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
+.scope:global(.app-container) :global(.organizer-hero) {
+  padding: 32px 20px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #e9f2ff 0%, #f0f7ff 100%);
+  border-radius: 24px 24px 0 0;
+}
+
+.scope:global(.app-container) :global(.organizer-avatar-large) {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #1d2d44;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  box-shadow: 0 8px 24px rgba(29, 45, 68, 0.2);
+}
+
+.scope:global(.app-container) :global(.organizer-name) {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a2740;
+  margin-bottom: 4px;
+  letter-spacing: -0.4px;
+}
+
+.scope:global(.app-container) :global(.organizer-subtitle) {
+  font-size: 13px;
+  color: #7b899d;
+}
+
+.scope:global(.app-container) :global(.organizer-stats) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.scope:global(.app-container) :global(.organizer-stat) {
+  text-align: center;
+  padding: 10px 4px;
+  background: #f7f9fc;
+  border-radius: 12px;
+}
+
+.scope:global(.app-container) :global(.organizer-stat-value) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a2740;
+  margin-bottom: 2px;
+}
+
+.scope:global(.app-container) :global(.organizer-stat-label) {
+  font-size: 11px;
+  color: #7b899d;
+}
+
+.scope:global(.app-container) :global(.organizer-section) {
+  padding: 8px 20px 0;
+}
+
+.scope:global(.app-container) :global(.organizer-section-title) {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2740;
+  margin-bottom: 10px;
+}
+
+.scope:global(.app-container) :global(.organizer-empty) {
+  font-size: 13px;
+  color: #7b899d;
+  padding: 12px 0;
+}
+
+.scope:global(.app-container) :global(.organizer-events-list) {
+  display: grid;
+  gap: 8px;
+}
+
+.scope:global(.app-container) :global(.organizer-event-card) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 14px;
+  background: #f7f9fc;
+  border: 1px solid #edf0f4;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.scope:global(.app-container) :global(.organizer-event-card:hover) {
+  background: #eef3fb;
+}
+
+.scope:global(.app-container) :global(.organizer-event-card img) {
+  width: 56px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.scope:global(.app-container) :global(.organizer-event-info) {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scope:global(.app-container) :global(.organizer-event-info strong) {
+  font-size: 13px;
+  color: #1a2740;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope:global(.app-container) :global(.organizer-event-info small) {
+  font-size: 11px;
+  color: #7b899d;
+}
+
+.scope:global(.app-container) :global(.organizer-event-meta) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.scope:global(.app-container) :global(body[data-theme="dark"]),
+:global(body[data-theme="dark"]) .scope:global(.app-container) :global(#root),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.app-container),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.content-area),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.mobile-header),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.search-bar),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tabs-row),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.quick-filters) {
+  background: #15171c !important;
+  color: #e8eaed !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.mobile-header h1) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.header-more) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.header-more.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tabs-row) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn) {
+  background: transparent !important;
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn:hover:not(.active)) {
+  background: #2f3540 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .scope:global(.app-container) :global(.chip) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.chip:hover) {
+  background: #2f3540 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.chip.active) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.event-card-horizontal) {
+  background: #1e2128 !important;
+  border-color: #2b3038 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.event-card-horizontal:hover) {
+  box-shadow: 0 4px 16px rgba(39, 134, 248, 0.25) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.event-card-horizontal h3) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.event-card-description) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.event-card-meta) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.category-tag) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.like-btn) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.like-btn.liked) {
+  color: #e44762 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.join-btn-small:not(:disabled)) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.join-btn-small.leave) {
+  background: #2a1a1c !important;
+  color: #f08080 !important;
+  box-shadow: inset 0 0 0 1px #5a2a2e !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav) {
+  background: #1e2128 !important;
+  border-color: #2b3038 !important;
+  box-shadow: 0 -5px 18px rgba(0, 0, 0, 0.5) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav button) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav button.active) {
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn.active) {
+  background: transparent !important;
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn.active) {
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .icon-plus) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.modal-overlay) {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.modal-content) {
+  background: #1e2128 !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.modal-header h2) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.close-btn) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-card) {
+  background: #262a33 !important;
+  border-color: #2b3038 !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-card strong) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-card small) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.leave-btn) {
+  background: transparent !important;
+  color: #f08080 !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.slider) {
+  background: #3a4150 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.switch input:checked + .slider) {
+  background: #2786f8 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.slider::before) {
+  background: #e8eaed !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.my-events-tabs) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.my-tab) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.my-tab.active) {
+  background: #1e2128 !important;
+  color: #5ea4ff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.page-title) {
+  color: #f0f2f5 !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.empty-state) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.empty-state h3) {
+  color: #c5cbd5 !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.content-area::-webkit-scrollbar-thumb) {
+  background: #3a4150 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-hero) {
+  background: linear-gradient(135deg, #1c3a5e 0%, #1e2128 100%) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-avatar-large) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-name) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-subtitle) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-stat) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-stat-value) {
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-stat-label) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-section-title) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-empty) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-event-card) {
+  background: #262a33 !important;
+  border-color: #2b3038 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-event-card:hover) {
+  background: #2f3540 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-event-info strong) {
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-event-info small) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-close) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+
+.scope:global(.app-container) :global(.favorites-title) {
+  margin: 0 0 16px;
+  padding: 22px 4px 0;
+  text-align: left;
+  font-size: 22px;
+  line-height: 1.2;
+}
+.scope:global(.app-container) :global(.favorites-title + .event-feed) {
+  gap: 18px;
+}
+.scope:global(.app-container) :global(.empty-state) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.scope:global(.app-container) :global(.empty-state p) {
+  max-width: 420px;
+}
+.scope:global(.app-container) :global(.empty-create-btn) {
+  display: block;
+  margin: 16px auto 0;
+}
+.scope:global(.app-container) :global(.main-content) {
+  background: #f7f9fc !important;
+}
+.scope:global(.app-container) :global(.main-content > .mobile-header),
+.scope:global(.app-container) :global(.main-content > .search-bar),
+.scope:global(.app-container) :global(.main-content > .quick-filters),
+.scope:global(.app-container) :global(.main-content > .content-area) {
+  background: #f7f9fc !important;
+}
+.scope:global(.app-container) :global(.event-card-horizontal) {
+  background: #fff;
+  border: 1px solid #dfe6ef;
+  box-shadow: 0 2px 8px rgba(30, 55, 85, 0.07);
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .mobile-header),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .search-bar),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .tabs-row),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .quick-filters),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content > .content-area) {
+  background: #15171c !important;
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.favorites-title) {
+    padding-top: 4px;
+  }
+}
+
+.scope:global(.app-container) :global(.organizer-avatar-large img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.scope:global(.app-container) :global(.organizer-about) {
+  padding: 12px 20px 0;
+}
+
+.scope:global(.app-container) :global(.organizer-about h3) {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2740;
+  margin-bottom: 6px;
+}
+
+.scope:global(.app-container) :global(.organizer-about p) {
+  font-size: 13px;
+  color: #7b899d;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-about h3) {
+  color: #f0f2f5 !important;
+}
+
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.organizer-about p) {
+  color: #8b95a5 !important;
+}
+.scope:global(.app-container)
+  :global(.event-card-horizontal:not(.event-card-owned)) {
+  min-height: 170px;
+  align-items: stretch;
+}
+.scope:global(.app-container)
+  :global(.event-card-horizontal:not(.event-card-owned) .event-card-image) {
+  flex: 0 0 112px;
+  width: 112px;
+  height: 150px;
+  align-self: flex-start;
+}
+.scope:global(.app-container) :global(.event-card-image img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.scope:global(.app-container) :global(.event-card-image .badge.paid) {
+  max-width: calc(100% - 12px);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scope:global(.app-container) :global(.event-card-image .badge.pushkin) {
+  padding: 5px 6px;
+  font-size: 9px;
+  line-height: 1.15;
+  letter-spacing: -0.2px;
+}
+.scope:global(.app-container) :global(.event-card-owned .event-card-image) {
+  max-height: 190px;
+}
+:global(body:has(.detail-overlay))
+  .scope:global(.app-container)
+  :global(.bottom-nav) {
+  display: none !important;
+}
+.scope:global(.app-container) :global(.detail-overlay) {
+  z-index: 2000 !important;
+  align-items: flex-start;
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.main-content > .quick-filters) {
+    width: calc(100% - 48px);
+    max-width: calc(100% - 48px);
+    margin: 0 24px;
+    padding: 0 0 14px;
+    box-sizing: border-box;
+  }
+  .scope:global(.app-container)
+    :global(.event-card-horizontal:not(.event-card-owned) .event-card-image) {
+    flex-basis: 132px;
+    width: 132px;
+    height: 170px;
+  }
+}
+@media (max-width: 767px) {
+  .scope:global(.app-container) :global(.main-content > .quick-filters) {
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+    margin: 0 16px;
+    padding: 0 0 10px;
+  }
+}
+
+.scope:global(.app-container) :global(*) {
+  scrollbar-width: none;
+}
+
+.scope:global(.app-container) :global(*::-webkit-scrollbar) {
+  display: none;
+}
+
+.scope:global(.app-container) :global(.map-preview-close-inline) {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f0f3f8;
+  color: #42536d;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.map-preview-close-inline) {
+  background: #262a33;
+  color: #c5cbd5;
+}
+.scope:global(.app-container) :global(.geo-source-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  margin-left: 6px;
+  border-radius: 10px;
+  background: #eef3fb;
+  color: #4a5f7a;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.scope:global(.app-container) :global(.geo-source-badge--me) {
+  background: #e8f2ff;
+  color: #1478ef;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.geo-source-badge) {
+  background: #262a33;
+  color: #8b95a5;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.geo-source-badge--me) {
+  background: #1c3a5e;
+  color: #5ea4ff;
+}
+.scope:global(.app-container) :global(.geo-source-badge--world) {
+  background: #f1ecff;
+  color: #6b4aeb;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.geo-source-badge--world) {
+  background: #2a2140;
+  color: #a791ff;
+}

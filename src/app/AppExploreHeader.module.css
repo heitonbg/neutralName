@@ -1,0 +1,160 @@
+.touristModeEntry {
+  margin: 0 16px 10px;
+}
+
+.headerLocation {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--vk-blue);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pin {
+  display: inline-flex;
+  color: var(--vk-blue);
+  font-size: 14px;
+}
+
+.chevron {
+  display: inline-flex;
+  font-size: 10px;
+}
+
+.greeting {
+  display: block;
+  margin-top: 7px;
+  color: var(--vk-text-secondary);
+  font-size: 14px;
+}
+
+.headerMenu {
+  position: absolute;
+  z-index: 1500;
+  top: calc(100% - 4px);
+  right: 16px;
+  width: 216px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  border: 1px solid #e5eaf1;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(26, 48, 78, 0.2);
+}
+
+.headerMenu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  color: #34465f;
+  text-align: left;
+}
+
+.headerMenu button:hover {
+  background: #f0f6ff;
+  color: #1478ef;
+}
+
+.touristModeButton {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  border: 1px solid #d8e9df;
+  border-radius: 13px;
+  background: #f2f8f4;
+  color: #245343;
+  text-align: left;
+}
+
+.touristModeIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 11px;
+  background: #dcefe3;
+  color: #177a56;
+}
+
+.touristModeCopy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.touristModeCopy strong {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.touristModeCopy small {
+  color: #647a6d;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+:global(body[data-theme="dark"]) .touristModeButton {
+  border-color: #354b3e;
+  background: #202b24;
+  color: #dcece1;
+}
+
+:global(body[data-theme="dark"]) .touristModeIcon {
+  background: #2c4937;
+  color: #8fd1a4;
+}
+
+:global(body[data-theme="dark"]) .touristModeCopy small {
+  color: #a6b8aa;
+}
+
+@media (min-width: 768px) {
+  .touristModeEntry {
+    margin: 0 24px 12px;
+  }
+
+  .headerMenu {
+    top: 96px;
+    right: max(52px, calc((100vw - 1440px) / 2 + 52px));
+    width: 270px;
+  }
+}
+
+:global(body[data-theme="dark"]) .headerLocation,
+:global(body[data-theme="dark"]) .pin {
+  color: #5ea4ff;
+}
+
+:global(body[data-theme="dark"]) .greeting {
+  color: #8b95a5;
+}
+
+:global(body[data-theme="dark"]) .headerMenu {
+  border-color: #2b3038;
+  background: #1e2128;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+:global(body[data-theme="dark"]) .headerMenu button {
+  color: #c5cbd5;
+}
+
+:global(body[data-theme="dark"]) .headerMenu button:hover {
+  background: #262a33;
+  color: #5ea4ff;
+}

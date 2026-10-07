@@ -1,0 +1,97 @@
+.searchIcon {
+  position: absolute;
+  z-index: 1;
+  left: 37px;
+  display: flex;
+  color: #7c8ba2;
+}
+
+.input {
+  flex: 1;
+  height: 55px;
+  padding: 0 17px 0 48px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  outline: none;
+  background: #f1f4f8;
+  color: #263751;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  border-color: var(--vk-blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+}
+
+.filterButton {
+  position: relative;
+  display: flex;
+  flex: 0 0 55px;
+  align-items: center;
+  justify-content: center;
+  width: 55px;
+  height: 55px;
+  border-radius: 15px;
+  background: #f1f4f8;
+  color: #243b5c;
+  font-size: 18px;
+}
+
+.filterButton:hover {
+  background: var(--vk-blue-light);
+}
+
+.filterBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid #fff;
+  border-radius: 9px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  place-items: center;
+}
+
+:global(body[data-theme="dark"]) .searchIcon {
+  color: #8b95a5;
+}
+
+:global(body[data-theme="dark"]) .input {
+  border-color: transparent;
+  background: #262a33;
+  color: #e8eaed;
+}
+
+:global(body[data-theme="dark"]) .input::placeholder {
+  color: #8b95a5;
+}
+
+:global(body[data-theme="dark"]) .input:focus {
+  border-color: #2786f8;
+  background: #1e2128;
+}
+
+:global(body[data-theme="dark"]) .filterButton {
+  background: #262a33;
+  color: #c5cbd5;
+}
+
+@media (max-width: 767px) {
+  .searchIcon {
+    left: 31px;
+  }
+}
+
+@media (min-width: 768px) {
+  .searchIcon {
+    left: 43px;
+  }
+}

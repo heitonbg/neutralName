@@ -1,0 +1,48 @@
+.banner {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #fff5d6;
+  color: #614a12;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.banner button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fff;
+  color: #614a12;
+  font: inherit;
+  font-weight: 700;
+}
+
+.banner button:focus-visible {
+  outline: 2px solid #2786f8;
+  outline-offset: 2px;
+}
+
+:global(body[data-theme="dark"]) .banner {
+  background: #3b321b;
+  color: #f4dc91;
+}
+
+:global(body[data-theme="dark"]) .banner button {
+  background: #262a33;
+  color: #f4dc91;
+}
+
+@media (max-width: 480px) {
+  .banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+  }
+}

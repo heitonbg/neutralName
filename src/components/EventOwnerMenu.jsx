@@ -1,7 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import Icon from './Icon';
+import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
+import styles from "./EventOwnerMenu.module.css";
 
-export default function EventOwnerMenu({ event, onDelete, onEdit, isPast = false }) {
+export default function EventOwnerMenu({
+  event,
+  onDelete,
+  onEdit,
+  isPast = false,
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);
 
@@ -11,25 +17,27 @@ export default function EventOwnerMenu({ event, onDelete, onEdit, isPast = false
       if (!root.current?.contains(e.target)) setOpen(false);
     };
     const escape = (e) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', escape);
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", escape);
     return () => {
-      document.removeEventListener('pointerdown', close);
-      document.removeEventListener('keydown', escape);
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", escape);
     };
   }, [open]);
 
   return (
     <div
-      className="event-owner-menu"
+      className={styles.menu}
+      data-event-owner-menu
       ref={root}
       onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
-        className="event-owner-trigger"
+        className={styles.trigger}
+        data-event-owner-trigger
         aria-label="Управление событием"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -37,7 +45,7 @@ export default function EventOwnerMenu({ event, onDelete, onEdit, isPast = false
         <Icon name="more" />
       </button>
       {open && (
-        <div className="event-owner-dropdown">
+        <div className={styles.dropdown} data-event-owner-dropdown>
           {onEdit && !isPast && (
             <button
               type="button"

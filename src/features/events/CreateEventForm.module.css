@@ -1,0 +1,89 @@
+.imageUploadRow {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e5eaf1;
+  border-radius: 14px;
+  background: #f7f9fc;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.imageUploadRow:focus-visible {
+  outline: 2px solid #2786f8;
+  outline-offset: 2px;
+}
+.imagePreviewStrip {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.imagePreviewItem {
+  position: relative;
+  flex: 0 0 74px;
+}
+.imagePreviewItem img {
+  width: 74px;
+  height: 58px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.imagePreviewItem button {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(16 29 46 / 78%);
+  color: #fff;
+}
+.imagePlaceholder {
+  display: none !important;
+  width: 74px;
+  height: 58px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: #dfeafb;
+  color: #2786f8;
+  cursor: pointer;
+}
+.uploadImageButton {
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  color: #8995a6 !important;
+  font-weight: 500;
+  text-align: left;
+  pointer-events: none;
+}
+.imageUploadRow p {
+  margin-top: 4px;
+  color: #8995a6;
+  font-size: 11px;
+}
+:global(body[data-theme="dark"]) .imageUploadRow {
+  border-color: #2b3038 !important;
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"]) .imageUploadRow p {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .imagePlaceholder {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .uploadImageButton {
+  background: transparent !important;
+  color: #8995a6 !important;
+}

@@ -1,0 +1,36 @@
+.sortRow {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.sortChip {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f4f8;
+  color: #44526a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.active {
+  background: #dceaff;
+  color: #0877f9;
+}
+
+:global(body[data-theme="dark"]) .sortChip {
+  background: var(--surface-muted) !important;
+  color: var(--text-muted) !important;
+}
+
+:global(body[data-theme="dark"]) .active {
+  background: var(--accent-soft) !important;
+  color: #5ea4ff !important;
+}

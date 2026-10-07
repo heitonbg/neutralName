@@ -1,5 +1,5 @@
 // src/utils/citySearch.js
-import RAW_CITIES from '../data/russianCities.json';
+import RAW_CITY_ROWS from '../data/russianCities.json';
 import { getRegionName } from '../data/ruRegions';
 
 // ============================================
@@ -39,11 +39,19 @@ const normalize = (str) =>
     .replace(/[^a-zа-я0-9]/g, '');
 
 // Обогащаем города — правим названия и добавляем regionName
-const CITIES = RAW_CITIES.map((c) => ({
-  ...c,
-  name: NAME_FIXES[c.name] || c.name,
-  regionName: getRegionName(c.region),
-}));
+// russianCities.json stores compact rows: name, lat, lng, population, type, region, GeoNames id.
+const CITIES = RAW_CITY_ROWS.map(
+  ([rawName, lat, lng, population, type, region, geonameid]) => ({
+    name: NAME_FIXES[rawName] || rawName,
+    lat,
+    lng,
+    population,
+    type,
+    region,
+    geonameid,
+    regionName: getRegionName(region),
+  }),
+);
 
 // ============================================
 // ИНДЕКСЫ

@@ -1,0 +1,750 @@
+.scope:global(.app-container) {
+  isolation: isolate;
+}
+.scope:global(.app-container) :global(.main-content) {
+  min-width: 0;
+  background: #fff;
+}
+
+@media (max-width: 767px) {
+  .scope:global(.app-container) {
+    width: 100%;
+    min-height: 100dvh;
+  }
+  .scope:global(.app-container) :global(.main-content) {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .scope:global(.app-container) {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 24px;
+    width: min(1440px, 100%);
+    max-width: 1440px !important;
+    margin: 0 auto !important;
+    padding: 24px;
+    background: transparent;
+    align-items: start;
+  }
+
+  .scope:global(.app-container) :global(.desktop-sidebar) {
+    display: flex !important;
+    position: sticky;
+    top: 24px;
+    flex-direction: column;
+    width: 208px;
+    min-height: calc(100dvh - 48px);
+    padding: 20px 12px;
+    border: 1px solid #e5eaf1;
+    border-radius: 20px;
+    background: var(--surface-card);
+  }
+
+  .scope :global(.sidebar-logo) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px 22px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #edf0f5;
+  }
+
+  .scope :global(.sidebar-logo-img) {
+    display: block;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    object-fit: contain;
+    flex: 0 0 36px;
+    background: var(--surface-card);
+  }
+
+  .scope :global(.sidebar-logo-text) h2 {
+    font-size: 17px;
+  }
+  .scope :global(.sidebar-logo-team) {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    color: #8290a2;
+  }
+  .scope :global(.sidebar-item) {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 13px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #66768b;
+    text-align: left;
+  }
+  .scope :global(.sidebar-item.active) {
+    color: #1678e8;
+    background: #eaf3ff;
+  }
+  .scope :global(.sidebar-footer) {
+    margin-top: auto;
+    padding: 24px 10px 4px;
+    color: #8b97a8;
+    font-size: 11px;
+  }
+  .scope :global(.sidebar-item) {
+    position: relative;
+  }
+  .scope :global(.sidebar-badge) {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #ff3b30;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+  }
+
+  .scope:global(.app-container) :global(.main-content) {
+    width: 100%;
+    max-width: none;
+    min-height: calc(100dvh - 48px);
+    border: 1px solid #e5eaf1;
+    border-radius: 24px;
+    background: var(--surface-card);
+    box-shadow: 0 8px 24px #24466c06;
+    overflow: hidden;
+  }
+}
+
+:global(body[data-theme="dark"]) .scope :global(.desktop-sidebar) {
+  background: var(--surface-card) !important;
+  border-color: var(--border-subtle) !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-logo) {
+  border-color: var(--border-subtle) !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-logo-text) h2 {
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-logo-team) {
+  color: var(--text-muted) !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-item) {
+  color: var(--text-muted) !important;
+  background: transparent !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-item:hover) {
+  background: var(--surface-muted) !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-item.active) {
+  background: var(--accent-soft) !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-footer) {
+  color: var(--text-muted) !important;
+  border-color: var(--border-subtle) !important;
+}
+:global(body[data-theme="dark"]) .scope :global(.sidebar-badge) {
+  background: #ff3b30 !important;
+  color: #fff !important;
+}
+.scope:global(.app-container) {
+  display: flex;
+  min-height: 100vh;
+  background: var(--vk-bg);
+}
+
+.scope:global(.app-container) :global(.main-content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.scope:global(.app-container) :global(.desktop-sidebar) {
+  display: none;
+}
+.scope:global(.app-container) :global(.mobile-header) {
+  padding: 16px 16px 8px;
+  background: var(--vk-card);
+}
+
+.scope:global(.app-container) :global(.mobile-header h1) {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scope:global(.app-container) :global(.search-bar) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  background: var(--vk-card);
+}
+.scope:global(.app-container) :global(.tabs-row) {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+  background: var(--vk-card);
+}
+
+.scope:global(.app-container) :global(.tab-btn) {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #f7f8fa;
+  color: var(--vk-text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.scope:global(.app-container) :global(.tab-btn:hover) {
+  background: var(--vk-blue-light);
+}
+
+.scope:global(.app-container) :global(.tab-btn.active) {
+  background: var(--vk-blue-light);
+  color: var(--vk-blue);
+}
+
+.scope:global(.app-container) :global(.tab-icon) {
+  font-size: 16px;
+}
+.scope:global(.app-container) :global(.quick-filters) {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--vk-card);
+}
+
+.scope:global(.app-container) :global(.quick-filters::-webkit-scrollbar) {
+  display: none;
+}
+
+.scope:global(.app-container) :global(.chip) {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: #f7f8fa;
+  color: var(--vk-text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.scope:global(.app-container) :global(.chip:hover) {
+  background: var(--vk-blue-light);
+}
+
+.scope:global(.app-container) :global(.chip.active) {
+  background: var(--vk-blue);
+  color: #fff;
+}
+.scope:global(.app-container) :global(.content-area) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 90px;
+  background: var(--vk-bg);
+}
+.scope:global(.app-container) :global(.bottom-nav) {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid var(--vk-divider);
+  z-index: 50;
+}
+
+.scope:global(.app-container) :global(.bottom-nav button) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--vk-text-secondary);
+  font-weight: 500;
+  padding: 4px 20px;
+}
+
+.scope:global(.app-container) :global(.bottom-nav button.active) {
+  color: var(--vk-blue);
+}
+
+.scope:global(.app-container) :global(.bottom-nav .icon) {
+  font-size: 20px;
+}
+
+.scope:global(.app-container) :global(.create-btn) {
+  background: var(--vk-blue) !important;
+  color: #fff !important;
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.4);
+}
+
+.scope:global(.app-container) :global(.create-btn .icon-plus) {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+}
+.scope:global(.app-container) :global(.mobile-header) {
+  padding: 23px 22px 11px;
+}
+.scope:global(.app-container) :global(.mobile-header h1) {
+  font-size: 27px;
+  line-height: 1.05;
+  letter-spacing: -0.8px;
+  gap: 10px;
+}
+.scope:global(.app-container) :global(.mobile-title-row) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.scope:global(.app-container) :global(.header-more) {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #f1f4f8;
+  color: #253752;
+}
+.scope:global(.app-container) :global(.search-bar) {
+  position: relative;
+  padding: 10px 22px 18px;
+  gap: 10px;
+}
+.scope:global(.app-container) :global(.tabs-row) {
+  margin: 0 22px 15px;
+  padding: 4px;
+  gap: 0;
+  border-radius: 15px;
+  background: #f1f3f7;
+}
+.scope:global(.app-container) :global(.tab-btn) {
+  padding: 11px;
+  border-radius: 11px;
+  background: transparent;
+  color: #43516a;
+  font-size: 16px;
+}
+.scope:global(.app-container) :global(.tab-btn.active) {
+  background: #dceaff;
+  color: #0877f9;
+  box-shadow: none;
+}
+.scope:global(.app-container) :global(.tab-icon) {
+  display: inline-flex;
+}
+.scope:global(.app-container) :global(.quick-filters) {
+  padding: 0 22px 15px;
+  gap: 9px;
+}
+.scope:global(.app-container) :global(.chip) {
+  padding: 10px 17px;
+  border-radius: 22px;
+  background: #f1f3f7;
+  font-size: 14px;
+  color: #44526a;
+}
+.scope:global(.app-container) :global(.chip.active) {
+  background: #2786f8;
+  color: #fff;
+}
+.scope:global(.app-container) :global(.content-area) {
+  padding: 0 22px 94px;
+  background: #f7f9fc;
+}
+.scope:global(.app-container) :global(.bottom-nav) {
+  max-width: 430px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -5px 18px rgba(29, 54, 85, 0.08);
+  padding-top: 10px;
+}
+.scope:global(.app-container) :global(.bottom-nav button) {
+  min-width: 100px;
+  color: #8995a6;
+  font-size: 12px;
+  font-weight: 500;
+}
+.scope:global(.app-container) :global(.bottom-nav .icon) {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn) {
+  width: 100px;
+  height: auto;
+  min-width: 100px;
+  border-radius: 0;
+  background: transparent;
+  color: #8995a6;
+  transform: none;
+  box-shadow: none;
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn.active) {
+  color: #2786f8;
+}
+.scope:global(.app-container) :global(.bottom-nav .icon-plus) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  background: #2786f8;
+  color: #fff;
+  box-shadow: 0 5px 13px rgba(39, 134, 248, 0.34);
+}
+.scope:global(.app-container)
+  :global(.bottom-nav .create-btn.active .icon-plus) {
+  background: #2786f8;
+  color: #fff;
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.content-area) {
+    padding: 16px 24px 100px;
+  }
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.mobile-header) {
+    padding: 20px 24px 12px;
+  }
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.search-bar) {
+    padding: 8px 24px 12px;
+  }
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.tabs-row) {
+    padding: 0 24px 12px;
+  }
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.quick-filters) {
+    padding: 0 24px 12px;
+  }
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) :global(.mobile-header h1) {
+    font-size: 28px;
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) {
+    grid-template-columns: 260px minmax(0, 1fr);
+    width: min(1600px, 100%);
+    max-width: 1600px !important;
+    margin: 0 auto;
+    box-shadow: 0 0 40px rgba(0, 119, 255, 0.05);
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.desktop-sidebar) {
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--vk-divider);
+    padding: 24px 16px;
+    background: #fff;
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.bottom-nav) {
+    display: none;
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.content-area) {
+    padding: 20px 32px 32px;
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.mobile-header) {
+    padding: 24px 32px 12px;
+    background: var(--vk-bg);
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.mobile-header h1) {
+    font-size: 32px;
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.search-bar) {
+    padding: 8px 32px 12px;
+    background: var(--vk-bg);
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.tabs-row) {
+    padding: 0 32px 12px;
+    background: var(--vk-bg);
+  }
+}
+@media (min-width: 1200px) {
+  .scope:global(.app-container) :global(.quick-filters) {
+    padding: 0 32px 12px;
+    background: var(--vk-bg);
+  }
+}
+@media (min-width: 1600px) {
+  .scope:global(.app-container) {
+    width: min(1800px, 100%);
+    max-width: 1800px !important;
+  }
+}
+.scope:global(.app-container) :global(.content-area::-webkit-scrollbar) {
+  width: 6px;
+}
+.scope:global(.app-container) :global(.content-area::-webkit-scrollbar-thumb) {
+  background: #ccc;
+  border-radius: 3px;
+}
+@media (min-width: 768px) {
+  .scope:global(.app-container) {
+    display: grid;
+  }
+  .scope:global(.app-container) :global(.bottom-nav) {
+    display: none !important;
+  }
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn),
+.scope:global(.app-container) :global(.bottom-nav .create-btn.active) {
+  background: transparent !important;
+  color: #8995a6 !important;
+  box-shadow: none !important;
+}
+.scope:global(.app-container) :global(.bottom-nav .create-btn .icon-plus) {
+  background: #2786f8;
+  color: #fff;
+}
+.scope:global(.app-container) :global(.quick-filters) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+.scope:global(.app-container) :global(.quick-filters .chip) {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+.scope:global(.app-container) :global(.mobile-header h1) {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.scope:global(.app-container) :global(.header-more.active) {
+  background: #dfeaff;
+  color: #1478ef;
+}
+:global(body[data-theme="dark"]) .scope:global(.app-container),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.main-content),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.content-area),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.mobile-header),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.search-bar),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tabs-row),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.quick-filters) {
+  background: #15171c !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.desktop-sidebar) {
+  background: #1e2128 !important;
+  border-color: #2b3038 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.mobile-header h1) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.header-more) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.header-more.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tabs-row) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn) {
+  background: transparent !important;
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn:hover:not(.active)) {
+  background: #2f3540 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.tab-btn.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .scope:global(.app-container) :global(.chip) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.chip:hover) {
+  background: #2f3540 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.chip.active) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav) {
+  background: #1e2128 !important;
+  border-color: #2b3038 !important;
+  box-shadow: 0 -5px 18px rgba(0, 0, 0, 0.5) !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav button) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav button.active) {
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn),
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn.active) {
+  background: transparent !important;
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .create-btn.active) {
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav .icon-plus) {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.content-area::-webkit-scrollbar-thumb) {
+  background: #3a4150 !important;
+}
+.scope:global(.app-container) :global(.quick-filters) {
+  display: flex;
+  flex-wrap: nowrap !important;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.scope:global(.app-container) :global(.quick-filters::-webkit-scrollbar) {
+  display: none;
+}
+.scope:global(.app-container) :global(.tabs-row) {
+  margin-top: 8px;
+}
+.scope:global(.app-container) :global(.bottom-nav-badge) {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  box-sizing: border-box;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.app-container)
+  :global(.bottom-nav-badge) {
+  border-color: #1e2128;
+}
+.scope:global(.app-container) :global(.bottom-nav > button) {
+  position: relative;
+}

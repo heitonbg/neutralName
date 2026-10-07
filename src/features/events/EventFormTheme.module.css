@@ -1,0 +1,174 @@
+.formScope {
+}
+:global(body[data-theme="dark"]) .formScope :global(.create-header h1) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.create-subtitle) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.back-btn) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.form-group label) {
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon),
+:global(body[data-theme="dark"]) .formScope :global(.textarea-with-icon) {
+  background: #262a33 !important;
+  border-color: #2b3038 !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon input),
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon select),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon textarea) {
+  color: #e8eaed !important;
+  background: transparent !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.input-with-icon input::placeholder),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon textarea::placeholder) {
+  color: #6b7688 !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.input-with-icon:focus-within),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon:focus-within) {
+  background: #1e2128 !important;
+  border-color: #2786f8 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon.error),
+:global(body[data-theme="dark"]) .formScope :global(.textarea-with-icon.error) {
+  background: #2a1a1c !important;
+  border-color: #b3261e !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.format-segmented) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.format-segmented button) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.format-segmented button.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.checkbox-group) {
+  background: #1c3a5e !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.checkbox-group label) {
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.limit-hint),
+:global(body[data-theme="dark"]) .formScope :global(.char-counter),
+:global(body[data-theme="dark"]) .formScope :global(.hint-text-with-icon) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.select-chevron) {
+  color: #8b95a5 !important;
+}
+
+:global(body[data-theme="dark"]) .formScope :global(.create-header h1) {
+  color: #f0f2f5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.create-subtitle) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.back-btn) {
+  background: #262a33 !important;
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.form-group label) {
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon),
+:global(body[data-theme="dark"]) .formScope :global(.textarea-with-icon) {
+  background: #262a33 !important;
+  border-color: #2b3038 !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon input),
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon select),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon textarea) {
+  color: #e8eaed !important;
+  background: transparent !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.input-with-icon input::placeholder),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon textarea::placeholder) {
+  color: #6b7688 !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.input-with-icon:focus-within),
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.textarea-with-icon:focus-within) {
+  background: #1e2128 !important;
+  border-color: #2786f8 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.input-with-icon.error),
+:global(body[data-theme="dark"]) .formScope :global(.textarea-with-icon.error) {
+  background: #2a1a1c !important;
+  border-color: #b3261e !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.format-segmented) {
+  background: #262a33 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.format-segmented button) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.format-segmented button.active) {
+  background: #1c3a5e !important;
+  color: #5ea4ff !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.event-price-amount input) {
+  background: #262a33 !important;
+  border-color: #2b3038 !important;
+  color: #e8eaed !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.checkbox-group) {
+  background: #1c3a5e !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.checkbox-group label) {
+  color: #c5cbd5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.limit-hint),
+:global(body[data-theme="dark"]) .formScope :global(.char-counter),
+:global(body[data-theme="dark"]) .formScope :global(.hint-text-with-icon) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.select-chevron) {
+  color: #8b95a5 !important;
+}
+:global(body[data-theme="dark"]) .formScope :global(.select-wrapper select) {
+  color-scheme: dark;
+}
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.select-wrapper select option) {
+  background: #262a33;
+  color: #e8eaed;
+}
+
+:global(body[data-theme="dark"])
+  .formScope
+  :global(.select-wrapper select option:checked) {
+  background: #1c3a5e;
+  color: #fff;
+}

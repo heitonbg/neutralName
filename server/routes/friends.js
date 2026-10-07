@@ -2,16 +2,15 @@
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
 import { notifyUser } from '../bot.js';
+import { requireMaxUser } from '../utils/maxInitData.js';
 
 const router = express.Router();
 
 /**
- * GET /api/friends?userId=123
+ * GET /api/friends (requires MAX Authorization)
  */
-router.get('/', (req, res) => {
-  const userId = req.query.userId != null ? String(req.query.userId) : '';
-  if (!userId) return res.status(400).json({ error: 'userId required' });
-
+router.get('/', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   res.json({
     friends: db.listFriends(userId),
     incoming: db.listIncomingFriendRequests(userId),
@@ -20,25 +19,25 @@ router.get('/', (req, res) => {
 });
 
 /**
- * GET /api/friends/status?userId=1&otherId=2
+ * GET /api/friends/status?otherId=2 (requires MAX Authorization)
  */
-router.get('/status', (req, res) => {
-  const userId = req.query.userId != null ? String(req.query.userId) : '';
+router.get('/status', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const otherId = req.query.otherId != null ? String(req.query.otherId) : '';
-  if (!userId || !otherId) return res.status(400).json({ error: 'userId и otherId обязательны' });
+  if (!otherId) return res.status(400).json({ error: 'otherId обязателен' });
   res.json({ status: db.getFriendshipStatus(userId, otherId) });
 });
 
 /**
- * POST /api/friends/request  { fromId, toId }
+ * POST /api/friends/request  { toId } (requires MAX Authorization)
  *
  * Идемпотентен: если заявка уже висит (outgoing), возвращаем 200 с тем же статусом.
  * Фронт от этого только выигрывает — не нужно ловить 400 для UI-состояния.
  */
-router.post('/request', (req, res) => {
-  const fromId = req.body?.fromId != null ? String(req.body.fromId) : '';
+router.post('/request', requireMaxUser, (req, res) => {
+  const fromId = req.maxUser.id;
   const toId = req.body?.toId != null ? String(req.body.toId) : '';
-  if (!fromId || !toId) return res.status(400).json({ error: 'fromId и toId обязательны' });
+  if (!toId) return res.status(400).json({ error: 'toId обязателен' });
   if (fromId === toId) return res.status(400).json({ error: 'Нельзя добавить себя' });
 
   const existing = db.getFriendshipStatus(fromId, toId);
@@ -66,12 +65,12 @@ router.post('/request', (req, res) => {
 });
 
 /**
- * POST /api/friends/accept  { userId, fromId }
+ * POST /api/friends/accept  { fromId } (requires MAX Authorization)
  */
-router.post('/accept', (req, res) => {
-  const userId = req.body?.userId != null ? String(req.body.userId) : '';
+router.post('/accept', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const fromId = req.body?.fromId != null ? String(req.body.fromId) : '';
-  if (!userId || !fromId) return res.status(400).json({ error: 'userId и fromId обязательны' });
+  if (!fromId) return res.status(400).json({ error: 'fromId обязателен' });
 
   const status = db.getFriendshipStatus(userId, fromId);
   if (status !== 'incoming') {
@@ -84,15 +83,15 @@ router.post('/accept', (req, res) => {
 });
 
 /**
- * POST /api/friends/decline  { userId, fromId }
+ * POST /api/friends/decline  { fromId } (requires MAX Authorization)
  *
  * Работает и для входящих (отклонить), и для исходящих (отменить).
  * Идемпотентен: если связи нет — 200 с status: 'none'.
  */
-router.post('/decline', (req, res) => {
-  const userId = req.body?.userId != null ? String(req.body.userId) : '';
+router.post('/decline', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const fromId = req.body?.fromId != null ? String(req.body.fromId) : '';
-  if (!userId || !fromId) return res.status(400).json({ error: 'userId и fromId обязательны' });
+  if (!fromId) return res.status(400).json({ error: 'fromId обязателен' });
 
   const status = db.getFriendshipStatus(userId, fromId);
   if (status === 'incoming' || status === 'outgoing') {
@@ -108,10 +107,10 @@ router.post('/decline', (req, res) => {
  * DELETE /api/friends/:friendId?userId=...
  * Удаление взаимное.
  */
-router.delete('/:friendId', (req, res) => {
-  const userId = req.query.userId != null ? String(req.query.userId) : '';
+router.delete('/:friendId', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
   const friendId = req.params.friendId != null ? String(req.params.friendId) : '';
-  if (!userId || !friendId) return res.status(400).json({ error: 'userId и friendId обязательны' });
+  if (!friendId) return res.status(400).json({ error: 'friendId обязателен' });
 
   db.removeFriend(userId, friendId);
   res.json({ status: 'none' });

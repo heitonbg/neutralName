@@ -1,10 +1,11 @@
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
+import { requireMaxUser } from '../utils/maxInitData.js';
 
 const router = express.Router();
 
-router.post('/', (req, res) => {
-  const { eventId, reason, reporterId, comment } = req.body;
+router.post('/', requireMaxUser, (req, res) => {
+  const { eventId, reason, comment } = req.body;
 
   if (!eventId || !reason) {
     return res.status(400).json({ error: 'eventId and reason required' });
@@ -14,7 +15,7 @@ router.post('/', (req, res) => {
     id: Date.now(),
     eventId,
     reason,
-    reporterId: reporterId || 'anonymous',
+    reporterId: req.maxUser.id,
     comment: comment || '',
     createdAt: new Date().toISOString(),
     status: 'pending'

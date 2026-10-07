@@ -12,8 +12,6 @@ const dateKey = (date) => [
   String(date.getDate()).padStart(2, '0'),
 ].join('-');
 
-const atStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
 const placeStartFromTime = (time, date) => {
   const match = String(time || '').match(/^(\d{2}):(\d{2})$/);
   if (!match) return null;

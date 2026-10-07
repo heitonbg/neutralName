@@ -1,6 +1,7 @@
 # DATA-API 1.0
 # Здесь не должно быть паролей, токенов, API-ключей и реальных персональных данных.
-# Роли в проверках обозначают только участников сценария; они не проверяются API.
+# Роли в проверках обозначают участников сценария. Для защищённых маршрутов
+# тестовый клиент должен отправлять подписанные MAX initData соответствующего пользователя.
 # Тесты, меняющие данные, запускайте только на изолированном тестовом сервере.
 
 schemaVersion: "1.0"
@@ -11,6 +12,14 @@ solution:
 api:
   baseUrl: "https://maxserver-iwrawww.amvera.io"
   openapi: "./openapi.yaml"
+  authentication:
+    scheme: "MAX initData"
+    header: "Authorization"
+    valuePrefix: "tma "
+    testSetup: >-
+      For protected checks, sign initData for the configured test actor with the
+      same test BOT_TOKEN as the isolated API server. The signed user ID must
+      match the actor expected by that check. Never use a production token.
 
 checks:
   - id: health
@@ -80,27 +89,23 @@ checks:
     timeoutMs: 5000
     repeatable: true
 
-  - id: bootstrap-anonymous
-    name: "Получение стартового состояния без пользователя"
+  - id: bootstrap-requires-authentication
+    name: "Защита стартового состояния пользователя"
     method: GET
     path: /api/bootstrap
-    role: public
+    role: unauthenticated
     expected:
-      statusCodes: [200]
+      statusCodes: [401]
       contentType: application/json
-      requiredFields: [user, joinedIds, participatedIds, createdIds]
+      requiredFields: [error, code]
       bodySchema:
         type: object
-        required: [user, joinedIds, participatedIds, createdIds]
+        required: [error, code]
         properties:
-          user:
-            type: "null"
-          joinedIds:
-            type: array
-          participatedIds:
-            type: array
-          createdIds:
-            type: array
+          error:
+            type: string
+          code:
+            const: MAX_AUTH_HEADER_MISSING
     timeoutMs: 5000
     repeatable: true
 
@@ -108,10 +113,7 @@ checks:
     name: "Получение текущих участий тестового пользователя"
     method: GET
     path: /api/events/joined
-    role: public
-    request:
-      query:
-        userId: data-api-test-participant
+    role: test-user
     expected:
       statusCodes: [200]
       contentType: application/json
@@ -131,10 +133,7 @@ checks:
     name: "Получение истории участий тестового пользователя"
     method: GET
     path: /api/events/participated
-    role: public
-    request:
-      query:
-        userId: data-api-test-participant
+    role: test-user
     expected:
       statusCodes: [200]
       contentType: application/json
@@ -154,11 +153,10 @@ checks:
     name: "Поиск пользователей"
     method: GET
     path: /api/users/search
-    role: public
+    role: test-user
     request:
       query:
         q: data-api-no-such-user-6f15a
-        userId: data-api-test-participant
     expected:
       statusCodes: [200]
       contentType: application/json
@@ -197,10 +195,7 @@ checks:
     name: "Получение списка друзей тестового пользователя"
     method: GET
     path: /api/friends
-    role: public
-    request:
-      query:
-        userId: data-api-test-friend-requester
+    role: test-user
     expected:
       statusCodes: [200]
       contentType: application/json
@@ -247,11 +242,10 @@ checks:
     name: "Проверка статуса тестовой заявки в друзья"
     method: GET
     path: /api/friends/status
-    role: public
+    role: test-user
     dependsOn: [request-friend]
     request:
       query:
-        userId: data-api-test-friend-requester
         otherId: data-api-test-friend-recipient
     expected:
       statusCodes: [200]

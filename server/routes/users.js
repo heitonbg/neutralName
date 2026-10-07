@@ -1,6 +1,7 @@
 // server/routes/users.js
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
+import { requireMaxUser } from '../utils/maxInitData.js';
 
 const router = express.Router();
 
@@ -41,9 +42,9 @@ function getOrganizerStats(userId) {
  * ⚠️ Важно: этот роут должен идти ДО `/:id`, иначе Express воспримет
  * "search" как значение параметра `:id`.
  */
-router.get('/search', (req, res) => {
+router.get('/search', requireMaxUser, (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase().slice(0, 80);
-  const viewerId = String(req.query.userId || '');
+  const viewerId = req.maxUser.id;
 
   if (q.length < 2) return res.json({ users: [] });
 
@@ -105,11 +106,7 @@ router.get('/:id', (req, res) => {
   res.json({ ...user, ...getOrganizerStats(req.params.id) });
 });
 
-/**
- * PATCH /api/users/:id
- * Обновляет профиль. Принимает name, photo_url, age, city, about, maxLink, theme, notificationsEnabled.
- */
-router.patch('/:id', (req, res) => {
+function updateAuthenticatedUser(req, res) {
   const { name, photo_url, age, city, about, maxLink, theme, notificationsEnabled } = req.body;
 
   const patch = {};
@@ -140,12 +137,20 @@ router.patch('/:id', (req, res) => {
 
     // ★ Если пользователь отключил уведомления — снимаем все запланированные напоминания
     if (notificationsEnabled === false) {
-      db.clearAllUserReminders(String(req.params.id));
+      db.clearAllUserReminders(req.maxUser.id);
     }
   }
 
-  const updated = db.upsertUser(req.params.id, patch);
+  const updated = db.upsertUser(req.maxUser.id, patch);
   res.json(updated);
+}
+
+router.patch('/me', requireMaxUser, updateAuthenticatedUser);
+router.patch('/:id', requireMaxUser, (req, res) => {
+  if (String(req.params.id) !== req.maxUser.id) {
+    return res.status(403).json({ error: 'Изменять можно только собственный профиль' });
+  }
+  return updateAuthenticatedUser(req, res);
 });
 
 export default router;

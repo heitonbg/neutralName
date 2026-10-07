@@ -1,11 +1,12 @@
 // server/routes/bootstrap.js
 import express from 'express';
 import db from '../db/sqliteDatabase.js';
+import { requireMaxUser } from '../utils/maxInitData.js';
 
 const router = express.Router();
 
 /**
- * GET /api/bootstrap?userId=123
+ * GET /api/bootstrap (requires MAX Authorization)
  *
  * Единый запрос при старте приложения. Возвращает:
  *  - user: профиль (если есть)
@@ -13,17 +14,8 @@ const router = express.Router();
  *  - participatedIds: все, где пользователь когда-либо участвовал (для отзывов)
  *  - createdIds: события, которые он организовал
  */
-router.get('/', (req, res) => {
-  const { userId } = req.query;
-
-  if (!userId) {
-    return res.json({
-      user: null,
-      joinedIds: [],
-      participatedIds: [],
-      createdIds: [],
-    });
-  }
+router.get('/', requireMaxUser, (req, res) => {
+  const userId = req.maxUser.id;
 
   const user = db.findUser(userId) || null;
 

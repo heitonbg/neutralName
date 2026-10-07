@@ -1,0 +1,128 @@
+.map {
+  position: relative;
+  isolation: isolate;
+  height: 155px;
+  overflow: hidden;
+  margin: 12px 0;
+  border-radius: 16px;
+  background: #edf2f5;
+}
+
+.map :global(.leaflet-container) {
+  width: 100%;
+  height: 100%;
+}
+
+.map > a {
+  position: absolute;
+  bottom: 22px;
+  left: 10px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #334763;
+  font-size: 12px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px #14213612;
+}
+
+.unavailable {
+  color: #778399;
+  font-size: 14px;
+}
+
+.openControls {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 500;
+  width: max-content;
+  max-width: calc(100% - 20px);
+}
+
+.openControls summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #334763;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px #14213612;
+  cursor: pointer;
+  list-style: none;
+}
+
+.openControls summary::-webkit-details-marker {
+  display: none;
+}
+
+.openControls summary:focus-visible,
+.providerMenu a:focus-visible {
+  outline: 2px solid #2786f8;
+  outline-offset: 2px;
+}
+
+.providerMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  min-width: 174px;
+  padding: 5px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 20px #14213625;
+}
+
+.openControls:not([open]) .providerMenu {
+  display: none;
+}
+
+.providerMenu a {
+  padding: 9px 11px;
+  border-radius: 8px;
+  color: #25354e;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.providerMenu a:hover {
+  background: #edf4ff;
+}
+
+:global(body[data-theme="dark"]) .map {
+  background: #262a33 !important;
+}
+
+:global(body[data-theme="dark"]) .unavailable {
+  color: #8b95a5 !important;
+}
+
+:global(body[data-theme="dark"]) .openControls summary,
+:global(body[data-theme="dark"]) .providerMenu {
+  border-color: #3a4150;
+  background: #262a33;
+  color: #e8eaed;
+}
+
+:global(body[data-theme="dark"]) .map > a {
+  background: #1e2128 !important;
+  color: #c5cbd5 !important;
+}
+
+:global(body[data-theme="dark"]) .providerMenu a {
+  color: #e8eaed;
+}
+
+:global(body[data-theme="dark"]) .providerMenu a:hover {
+  background: #1c3a5e;
+}

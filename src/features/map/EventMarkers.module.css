@@ -1,0 +1,212 @@
+.scope {
+}
+.scope:global(.map-container) :global(.event-map-marker-wrap) {
+  background: transparent;
+  border: 0;
+}
+.scope:global(.map-container) :global(.event-map-marker) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  min-width: 106px;
+  padding: 5px 10px 5px 5px;
+  border: 2px solid currentColor;
+  border-radius: 12px;
+  background: #fff;
+  color: #2085f6;
+  box-shadow: 0 3px 9px rgba(27, 49, 77, 0.16);
+}
+.scope:global(.map-container) :global(.event-map-marker::after) {
+  content: "";
+  position: absolute;
+  bottom: -12px;
+  left: 18px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.84);
+}
+.scope:global(.map-container) :global(.event-map-marker.green) {
+  color: #25ab62;
+}
+.scope:global(.map-container) :global(.event-map-marker.pink) {
+  color: #ee4a86;
+}
+.scope:global(.map-container) :global(.event-map-marker.orange) {
+  color: #fa7341;
+}
+.scope:global(.map-container) :global(.event-map-marker.violet) {
+  color: #8d51e8;
+}
+.scope:global(.map-container) :global(.event-map-marker > span:last-child) {
+  display: grid;
+  line-height: 1.12;
+}
+.scope:global(.map-container) :global(.event-map-marker b) {
+  font-size: 11px;
+  color: #24334b;
+}
+.scope:global(.map-container) :global(.event-map-marker small) {
+  font-size: 10px;
+  color: #738097;
+  margin-top: 2px;
+}
+.scope:global(.map-container) :global(.event-map-marker .event-map-friends) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+.scope:global(.map-container) :global(.event-map-marker::after) {
+  display: none !important;
+}
+.scope:global(.map-container) :global(.event-map-marker .marker-symbol) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: -6px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--marker-color, #2085f6);
+  color: #fff;
+  overflow: visible;
+}
+.scope:global(.map-container)
+  :global(.event-map-marker .marker-symbol--friends) {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  width: auto;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 4px 0 0;
+  background: transparent;
+  gap: 0;
+}
+.scope:global(.map-container) :global(.marker-friend) {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #2786f8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.scope:global(.map-container) :global(.marker-friend:first-child) {
+  margin-left: 0;
+}
+
+.scope:global(.map-container) :global(.marker-friend img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+.scope:global(.map-container) :global(.marker-friend-initial) {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #2786f8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: inherit;
+}
+.scope:global(.map-container)
+  :global(.marker-friend:not(.marker-friend--fallback) .marker-friend-initial) {
+  display: none;
+}
+.scope:global(.map-container) :global(.marker-friend--fallback img) {
+  display: none;
+}
+.scope:global(.map-container)
+  :global(.marker-friend--fallback .marker-friend-initial) {
+  position: static;
+  width: 100%;
+  height: 100%;
+}
+.scope:global(.map-container) :global(.marker-friend--more) {
+  background: #dfe6ef;
+  color: #44536a;
+  font-size: 11px;
+}
+.scope:global(.map-container) :global(.event-map-marker-friends-label) {
+  display: block;
+  margin-top: 2px;
+  color: #2786f8;
+  font-weight: 600;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.map-container)
+  :global(.marker-friend) {
+  border-color: #1e2128;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.map-container)
+  :global(.marker-friend-initial) {
+  background: #1c3a5e;
+  color: #5ea4ff;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.map-container)
+  :global(.marker-friend--more) {
+  background: #2f3540;
+  color: #c5cbd5;
+}
+:global(body[data-theme="dark"])
+  .scope:global(.map-container)
+  :global(.event-map-marker-friends-label) {
+  color: #5ea4ff;
+}
+.scope:global(.map-container) :global(.event-map-marker) {
+  --marker-color: #2085f6;
+}
+.scope:global(.map-container) :global(.event-map-marker.green) {
+  --marker-color: #25ab62;
+}
+.scope:global(.map-container) :global(.event-map-marker.pink) {
+  --marker-color: #ee4a86;
+}
+.scope:global(.map-container) :global(.event-map-marker.orange) {
+  --marker-color: #fa7341;
+}
+.scope:global(.map-container) :global(.event-map-marker.violet) {
+  --marker-color: #8d51e8;
+}
+.scope:global(.map-container) :global(.event-map-marker .marker-symbol) {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  background: var(--marker-color);
+  color: white;
+}
+.scope:global(.map-container)
+  :global(.event-map-marker .marker-symbol--friends) {
+  background: transparent;
+}
+.scope:global(.map-container) :global(.marker-symbol svg) {
+  display: block;
+  width: 23px;
+  height: 23px;
+  stroke: white;
+}

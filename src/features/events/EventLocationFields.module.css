@@ -1,0 +1,148 @@
+.addressControl {
+  position: relative;
+  width: 100%;
+}
+
+.mapPickerFull {
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.inlineLocationPicker {
+  padding: 10px;
+  margin-top: 10px;
+  border: 1px solid #e4eaf1;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.pickerMap {
+  isolation: isolate;
+  z-index: 0;
+  height: 270px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border-radius: 16px;
+}
+
+.pickerMap :global(.leaflet-container) {
+  border-radius: 16px;
+}
+
+.pickerPinWrap {
+  background: transparent;
+  border: 0;
+}
+
+.pickerPinDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50% 50% 50% 0;
+  background: #2786f8;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 8px rgba(10, 83, 181, 0.35);
+}
+
+.confirmMapPoint {
+  width: 100%;
+  padding: 12px;
+  border-radius: 11px;
+  background: #2786f8;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.confirmMapPoint:disabled {
+  opacity: 0.5;
+}
+
+.addressSuggestions {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid #e3e9f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(25, 49, 80, 0.15);
+}
+
+.addressSuggestions:empty {
+  display: none;
+}
+
+.addressSuggestions button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  color: #34445c;
+  text-align: left;
+  font-size: 12px;
+}
+
+.addressSuggestions button:hover {
+  background: #f0f6ff;
+}
+
+.addressSuggestions span {
+  display: grid;
+  gap: 2px;
+}
+
+.addressSuggestions small {
+  color: #7d8a9c;
+  font-size: 11px;
+}
+
+:global(body[data-theme="dark"]) .addressSuggestions {
+  background: #1e2128 !important;
+  border-color: #2b3038 !important;
+}
+
+:global(body[data-theme="dark"]) .addressSuggestions button {
+  color: #c5cbd5 !important;
+}
+
+:global(body[data-theme="dark"]) .addressSuggestions button:hover {
+  background: #262a33 !important;
+}
+
+:global(body[data-theme="dark"]) .addressSuggestions small {
+  color: #8b95a5 !important;
+}
+
+:global(body[data-theme="dark"]) .inlineLocationPicker {
+  border-color: #2b3038 !important;
+  background: #1e2128 !important;
+}
+
+:global(body[data-theme="dark"]) .confirmMapPoint {
+  background: #2786f8 !important;
+  color: #fff !important;
+}
+
+.searchStatus {
+  margin: 0;
+  padding: 10px 12px;
+  color: #7d8a9c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.searchStatusError {
+  color: #c53040;
+}
+
+:global(body[data-theme="dark"]) .searchStatus {
+  color: #8b95a5;
+}
+
+:global(body[data-theme="dark"]) .searchStatusError {
+  color: #f08080;
+}

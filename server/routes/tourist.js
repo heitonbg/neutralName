@@ -254,7 +254,7 @@ router.post('/search-places', async (req, res) => {
   }
 });
 
-router.post('/plan', async (req, res) => {
+router.post('/plan', requireMaxUser, async (req, res) => {
   const apiKey = process.env.AI_API_KEY;
   const model = process.env.AI_MODEL;
   if (!apiKey || !model) {

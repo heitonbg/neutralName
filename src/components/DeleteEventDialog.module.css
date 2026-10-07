@@ -1,0 +1,80 @@
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  margin: auto;
+  padding: 24px;
+  border: 0;
+  border-radius: 24px;
+  background: white;
+  color: #142136;
+  box-shadow: 0 24px 80px #14213640;
+}
+
+.dialog::backdrop {
+  background: #16223880;
+}
+
+.dialog h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.dialog p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.actions button {
+  flex: 1;
+  min-height: 46px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: #f0f3f8;
+  color: #334763;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.confirm {
+  background: #d93448;
+  color: white;
+}
+
+.error {
+  color: #c53040;
+}
+
+:global(body[data-theme='dark']) .dialog {
+  background: #1e2128;
+  color: #e8eaed;
+}
+
+:global(body[data-theme='dark']) .dialog h2 {
+  color: #f0f2f5;
+}
+
+:global(body[data-theme='dark']) .actions button {
+  background: #262a33;
+  color: #c5cbd5;
+}
+
+:global(body[data-theme='dark']) .actions .confirm {
+  background: #d93448;
+  color: #fff;
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import styles from './LegalDocument.module.css';
 
 const documents = {
   privacy: {
@@ -28,21 +28,21 @@ export default function LegalDocument({ type, onClose, onSwitch }) {
   const document = documents[type];
   if (!document) return null;
   return (
-    <div className="modal-overlay legal-overlay" onClick={onClose}>
-      <section className="modal-content legal-document" role="dialog" aria-modal="true" aria-labelledby="legal-title" onClick={(event) => event.stopPropagation()}>
-        <header className="legal-header">
-          <button type="button" onClick={onClose} aria-label="Назад">←</button>
+    <div className={`modal-overlay ${styles.overlay}`} onClick={onClose}>
+      <section className={`modal-content ${styles.document}`} role="dialog" aria-modal="true" aria-labelledby="legal-title" onClick={(event) => event.stopPropagation()}>
+        <header className={styles.header}>
+          <button className={styles.backButton} type="button" onClick={onClose} aria-label="Назад">←</button>
           <h2 id="legal-title">{document.title}</h2>
         </header>
-        <p className="legal-date">Редакция от 24 сентября 2026 г.</p>
-        <p className="legal-notice">Это проект документа. Автор проекта команда "нейтральное название"</p>
+        <p className={styles.date}>Редакция от 24 сентября 2026 г.</p>
+        <p className={styles.notice}>Это проект документа. Автор проекта команда «нейтральное название»</p>
         {document.sections.map(([heading, body]) => (
           <section key={heading}>
             <h3>{heading}</h3>
             <p>{body}</p>
           </section>
         ))}
-        <button type="button" className="legal-switch" onClick={() => onSwitch(type === 'privacy' ? 'terms' : 'privacy')}>
+        <button type="button" className={styles.switchButton} onClick={() => onSwitch(type === 'privacy' ? 'terms' : 'privacy')}>
           {type === 'privacy' ? 'Пользовательское соглашение' : 'Политика конфиденциальности'}
         </button>
       </section>

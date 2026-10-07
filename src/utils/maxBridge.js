@@ -8,8 +8,8 @@ export const maxBridge = {
         window.WebApp.ready?.();
         window.WebApp.expand?.();
         return true;
-      } catch (e) {
-        console.warn('MAX Bridge init failed', e);
+      } catch (error) {
+        console.warn('MAX Bridge init failed', error);
       }
     }
     return false;
@@ -34,12 +34,6 @@ export const maxBridge = {
     return null;
   },
 
-  sendData: (data) => {
-    // В MAX Bridge метод sendData отсутствует.
-    // Для передачи данных боту используется бэкенд или openMaxLink.
-    console.log('[MAX Bridge] sendData (требует API):', data);
-  },
-
   haptic: (type = 'light') => {
     if (!maxBridge.isAvailable()) return;
     const hf = window.WebApp.HapticFeedback;
@@ -50,7 +44,7 @@ export const maxBridge = {
       if (typeof hf.impactOccurred === 'function') {
         hf.impactOccurred(type);
       }
-    } catch (e) {
+    } catch (_error) {
       // MAX Bridge может кинуть UnsupportedEvent — это нормально
     }
   },

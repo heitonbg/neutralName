@@ -1,23 +1,22 @@
-import React from 'react';
-import Icon from './Icon';
+import styles from "./ConsentScreen.module.css";
 
 const ConsentScreen = ({ onAccept }) => {
   return (
-    <div className="consent-screen">
-      <div className="consent-icon">
-        <img src="/logo.png" alt="Вместе" style={{ width: 96, height: 96, objectFit: 'contain' }} />
+    <div className={styles.screen}>
+      <div className={styles.icon}>
+        <img src="/logo.png" alt="Вместе" className={styles.logo} />
       </div>
-      <h1>Вместе</h1>
-      <p className="consent-subtitle">
+      <h1 className={styles.title}>Вместе</h1>
+      <p className={styles.subtitle}>
         Делитесь идеями. Собирайте людей. Делайте город ярче!
       </p>
 
-      <div className="consent-card">
+      <div className={styles.card}>
         <h3>Согласие на обработку данных</h3>
         <p>
           Для работы приложения мы обрабатываем: имя, аватар и приблизительную
-          геолокацию. Данные используются только для организации досуга и
-          не передаются третьим лицам.
+          геолокацию. Данные используются только для организации досуга и не
+          передаются третьим лицам.
         </p>
         <ul>
           <li>✅ Точный адрес виден только участникам</li>
@@ -29,7 +28,7 @@ const ConsentScreen = ({ onAccept }) => {
       <button className="primary-btn" onClick={onAccept}>
         Согласен и продолжить
       </button>
-      <p className="consent-note">
+      <p className={styles.note}>
         Нажимая кнопку, вы соглашаетесь с политикой конфиденциальности (152-ФЗ)
       </p>
     </div>

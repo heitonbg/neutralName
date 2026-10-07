@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node --use-system-ca index.js",
-    "dev": "node --use-system-ca --watch index.js"
+    "dev": "node --use-system-ca --watch index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@maxhub/max-bot-api": "^0.3.1",
